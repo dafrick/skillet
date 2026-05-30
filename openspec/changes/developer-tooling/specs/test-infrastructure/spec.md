@@ -77,7 +77,24 @@ No test SHALL call `process.chdir()` or mutate `process.env.HOME` / `process.env
 
 The following scenarios SHALL be covered for each valid combination:
 
-- **Fresh install**: correct files written to `<expectedSubdir>/<skill-name>/`; `.skill-meta.json` contains all required fields (`name`, `version`, `source`, `sourceVersion`, `contentHash`, `renderHash`, `postInstallHash`, `adapterId`, `scope`, `installedAt`); `postInstallHash` matches a fresh re-hash of the installed folder (excluding `.skill-meta.json`)
+- **Fresh install**: correct files written to `<expectedSubdir>/<skill-name>/`; `.skill-meta.json` contains all required fields with the formats defined below; `postInstallHash` matches a fresh re-hash of the installed folder (excluding `.skill-meta.json`)
+
+**`.skill-meta.json` field formats for assertion:**
+
+| Field | Type | Format | Source |
+|---|---|---|---|
+| `name` | string | matches SKILL.md `name` frontmatter | `NormalizedSkill.name` |
+| `version` | string \| undefined | semver string or absent if not in frontmatter | `NormalizedSkill.version` |
+| `source` | string | npm package name from `pkg.name` passed to `run()` (e.g. `"@skillet/hello"`) | `RunOptions.pkg.name` |
+| `sourceVersion` | string | semver string from `pkg.version` passed to `run()` (e.g. `"1.0.0"`) | `RunOptions.pkg.version` |
+| `contentHash` | string | `sha256:` prefix + 64-char lowercase hex digest | `hashSkill()` output |
+| `renderHash` | string | `sha256:` prefix + 64-char lowercase hex digest | `computeRenderHash()` output |
+| `postInstallHash` | string | `sha256:` prefix + 64-char lowercase hex digest | re-hash of installed folder |
+| `adapterId` | string | one of `'claude'`, `'copilot'`, `'agents'` | adapter `id` field |
+| `scope` | string | one of `'user'`, `'project'` | install call argument |
+| `installedAt` | string | ISO 8601 UTC (`new Date().toISOString()` format, e.g. `"2026-05-31T12:00:00.000Z"`) | set at install time |
+
+Tests asserting `installedAt` SHALL check that it is a valid ISO 8601 string (e.g. `/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/`) rather than an exact value.
 - **Idempotent install**: running install twice on an unmodified install produces no changes and exits successfully
 - **Drift detection**: editing a file post-install causes `detectDrift()` to return `'modified'`; an unmodified install returns `'pristine'`; an install with no `.skill-meta.json` returns `'unknown'`
 - **Stale detection**: `isStale()` returns `true` when the source skill has changed; returns `false` when source matches the stored `contentHash`
@@ -86,6 +103,7 @@ The following scenarios SHALL be covered for each valid combination:
 - **Update drifted without `--force`** (non-TTY): skips the install and reports the skip
 - **Uninstall**: removes the installed directory; subsequent `findExistingInstalls()` returns empty for that adapter/scope
 - **Hooks**: `beforeInstall` is called before files are copied; `afterInstall` is called after `.skill-meta.json` is written; both receive correct arguments
+- **Copilot user-scope rejection**: calling `performInstall` with the `copilot` adapter and `scope: 'user'` SHALL throw (or the orchestration layer SHALL skip/error before calling `performInstall`) because `copilotAdapter.supportsScope('user')` returns false; no files are written to the user home directory
 
 #### Scenario: Fresh install writes correct files
 - **WHEN** `performInstall(skill, adapter, 'user', {})` is called inside a sandbox with `~/.claude/` present
@@ -103,10 +121,26 @@ The following scenarios SHALL be covered for each valid combination:
 - **WHEN** `performInstall` is called with `beforeInstall` and `afterInstall` hooks
 - **THEN** `beforeInstall` is called before any files are written and `afterInstall` is called after `.skill-meta.json` exists on disk
 
+#### Scenario: Copilot adapter rejects user scope install
+- **WHEN** an install is attempted with the `copilot` adapter and `scope: 'user'`
+- **THEN** the operation throws or returns an error before writing any files, and no files exist under `sandbox.home`
+
 ---
 
 ### Requirement: E2E tests cover the full CLI via real pty
-`test/e2e/` SHALL use `cli-testing-library` to spawn `bin/cli.js` inside a real pseudo-terminal (pty). A `renderCli(args, opts)` helper SHALL wrap `cli-testing-library`'s `render()` with sandbox creation and `HOME`/`USERPROFILE` injection. The global Vitest setup SHALL pre-build `packages/core/` before the E2E suite runs.
+`test/e2e/` SHALL use **`crutchcorn/cli-testing-library`** (npm: `cli-testing-library`) — the Testing Library-style wrapper around `node-pty` that provides `render()`, `findByText()`, and `userEvent.keyboard()`. (There are two packages with similar names; this is the `crutchcorn` variant at https://github.com/crutchcorn/cli-testing-library.)
+
+A `renderCli(args, sandboxOpts)` helper SHALL wrap `cli-testing-library`'s `render()` and inject the sandbox home path via the **spawn environment**, not via `process.env` mutation. Because `render()` spawns a child process, only values passed in the `env` option of the spawn call are visible to the child — mutations to `process.env` in the test process are not inherited. The correct pattern is:
+
+```ts
+render('node', ['bin/cli.js', ...args], {
+  env: { ...process.env, HOME: sandbox.home, USERPROFILE: sandbox.home }
+})
+```
+
+The `renderCli` helper SHALL create the sandbox, pass `HOME`/`USERPROFILE` through spawn `env`, and register cleanup in `afterEach`.
+
+E2E tests SHALL use a separate **`vitest.config.e2e.ts`** (not the main `vitest.config.ts`) so the pre-build global setup runs only when the E2E suite is explicitly invoked. The `test:e2e` script SHALL point to this config: `vitest run --config vitest.config.e2e.ts`. The main `vitest.config.ts` SHALL NOT include `test/e2e/**` in its include patterns, preventing accidental E2E execution during `pnpm test:unit` or `pnpm test:integration`.
 
 The following scenarios SHALL be covered:
 

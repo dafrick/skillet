@@ -14,10 +14,10 @@ A single `biome.json` at the repo root SHALL configure the Biome formatter with 
 ---
 
 ### Requirement: Biome linter enforces project-specific rules
-The Biome linter SHALL be configured with the `recommended` ruleset plus the following additional rules enabled as errors:
-- `noConsole` — raw `console.log`, `console.warn`, `console.error` are forbidden in `src/**`; all CLI output MUST go through the `ui/` design system
-- `useImportType` — `import type` MUST be used for type-only imports
-- `useNodejsImportProtocol` — all Node built-in imports MUST use the `node:` prefix (e.g. `node:fs`, `node:path`, `node:crypto`)
+The Biome linter SHALL be configured with the `recommended` ruleset plus the following additional rules enabled as errors, each nested under their correct Biome category:
+- `linter.rules.suspicious.noConsole` — raw `console.log`, `console.warn`, `console.error` are forbidden in `src/**`; all CLI output MUST go through the `ui/` design system
+- `linter.rules.style.useImportType` — `import type` MUST be used for type-only imports
+- `linter.rules.style.useNodejsImportProtocol` — all Node built-in imports MUST use the `node:` prefix (e.g. `node:fs`, `node:path`, `node:crypto`)
 
 The `noConsole` rule SHALL be disabled in `test/**` via Biome's `overrides` key.
 
@@ -40,7 +40,7 @@ The `noConsole` rule SHALL be disabled in `test/**` via Biome's `overrides` key.
 ---
 
 ### Requirement: Biome organises imports automatically
-Biome's `organizeImports` SHALL be enabled. Imports SHALL be auto-sorted when `pnpm format` or `biome check --write` is run.
+Biome's import organiser SHALL be enabled using the Biome v2 `assist` configuration key: `assist.actions.source.organizeImports: "on"`. Imports SHALL be auto-sorted when `pnpm format` or `biome check --write` is run. (Note: the Biome v1 top-level `organizeImports` key is not valid in v2 and is silently ignored.)
 
 #### Scenario: Unsorted imports are sorted on format
 - **WHEN** a file has imports in non-alphabetical order and `pnpm format` is run
@@ -49,15 +49,15 @@ Biome's `organizeImports` SHALL be enabled. Imports SHALL be auto-sorted when `p
 ---
 
 ### Requirement: Lefthook runs pre-commit checks on staged files
-`lefthook.yml` SHALL define a `pre-commit` hook that runs two commands in sequence on staged files:
-1. `biome check --write --changed` — formats and lints only staged files
-2. `tsc --noEmit` — type-checks the full project
+`lefthook.yml` SHALL define a `pre-commit` hook that runs two commands in sequence:
+1. `biome check --write {staged_files}` — formats and lints only staged files; Lefthook substitutes `{staged_files}` with the list of staged file paths, scoping Biome to changed files only. (Note: `--changed` is a Biome VCS integration flag that requires additional `vcs` config in `biome.json` and is not the correct approach here.)
+2. `tsc --noEmit -p packages/core/tsconfig.json` — type-checks the core package using its own tsconfig; running bare `tsc --noEmit` at the repo root would fail because there is no root-level `tsconfig.json`.
 
 Both commands MUST pass for the commit to proceed.
 
 #### Scenario: Type error blocks commit
 - **WHEN** a contributor stages a file with a TypeScript type error and runs `git commit`
-- **THEN** the `tsc --noEmit` step exits non-zero and the commit is rejected with a type error message
+- **THEN** the `tsc --noEmit -p packages/core/tsconfig.json` step exits non-zero and the commit is rejected with a type error message
 
 #### Scenario: Clean commit passes hooks
 - **WHEN** all staged files are well-typed and Biome-clean

@@ -55,7 +55,7 @@
 
 ### D4: `cli-testing-library` over raw `node-pty`
 
-**Decision**: E2E tests use `cli-testing-library`, which wraps `node-pty` with a Testing Library-style API (`render()`, `findByText()`, `userEvent.keyboard()`).
+**Decision**: E2E tests use **`crutchcorn/cli-testing-library`** (npm package: `cli-testing-library`), which wraps `node-pty` with a Testing Library-style API (`render()`, `findByText()`, `userEvent.keyboard()`). Note: two packages share this name; this decision refers specifically to the `crutchcorn` variant.
 
 **Rationale**: `cli-testing-library` abstracts pty lifecycle, stream cleanup, and process teardown — exactly the same relationship as Playwright to Chromium. The query API makes assertions readable without parsing raw ANSI escape sequences. Using `node-pty` directly would require reimplementing all of that plumbing per test.
 
@@ -67,7 +67,7 @@
 
 **Decision**: A single `biome.json` at the repo root handles both formatting and linting across all packages.
 
-**Rationale**: Biome is fast, near-zero config, and has excellent TypeScript + ESM support. The most important project-specific rule — `noConsole` (all output must go through the `ui/` design system) — is available in Biome's linter. ESLint + Prettier would require two config files, the `eslint-config-prettier` bridge, and slower lint runs. The smaller Biome ruleset is not a concern because the codebase is greenfield and can be designed to avoid the patterns Biome doesn't cover.
+**Rationale**: Biome is fast, near-zero config, and has excellent TypeScript + ESM support. The most important project-specific rule — `noConsole` (all output must go through the `ui/` design system) — is available in Biome's linter under `linter.rules.suspicious.noConsole`. Import organisation uses the Biome v2 `assist.actions.source.organizeImports` key (the v1 top-level `organizeImports` key is silently ignored in v2). ESLint + Prettier would require two config files, the `eslint-config-prettier` bridge, and slower lint runs.
 
 **Alternative considered**: ESLint + Prettier. Rejected for this project: two tools, two configs, shared conflict surface, slower.
 
@@ -79,7 +79,7 @@
 
 **Rationale**: Lefthook requires no `postinstall` script. Husky's `prepare` script (`husky install`) fails silently when contributors run `npm install --ignore-scripts` (common in CI and some corporate environments), leaving hooks absent with no warning. Lefthook is activated by `lefthook install` as an explicit setup step, documented in `CONTRIBUTING.md`.
 
-**Alternative considered**: Husky + lint-staged. Rejected: the `prepare`-script footgun is a real contributor experience problem, and lint-staged adds a second tool for a problem (running checks on staged files only) that Biome handles natively with `--changed`.
+**Alternative considered**: Husky + lint-staged. Rejected: the `prepare`-script footgun is a real contributor experience problem, and lint-staged adds a second tool for a problem (running checks on staged files only) that Lefthook handles natively via the `{staged_files}` substitution passed directly to `biome check --write`.
 
 ---
 
@@ -91,11 +91,11 @@
 
 ---
 
-### D8: Global Vitest setup pre-builds core before E2E
+### D8: Separate `vitest.config.e2e.ts` with global setup for pre-build
 
-**Decision**: A `vitest.setup.ts` global setup file runs `pnpm build` for `packages/core/` before the E2E suite executes.
+**Decision**: E2E tests use a dedicated `vitest.config.e2e.ts` (not the main `vitest.config.ts`) that includes a `globalSetup` file which runs `pnpm build` before the suite executes. The `test:e2e` script points to this config explicitly. The main `vitest.config.ts` does not include `test/e2e/**` files.
 
-**Rationale**: `cli-testing-library` spawns the compiled `bin/cli.js`. Without a pre-build step, E2E tests silently run against stale output — or fail with "file not found" if `dist/` doesn't exist. The global setup ensures the binary is always current. Unit and integration tests import TypeScript source directly via Vitest's ts-node transform and don't need the build.
+**Rationale**: Vitest's `globalSetup` runs unconditionally before any worker — there is no mechanism to detect "which test files are being run" inside `globalSetup`. The only reliable way to gate the pre-build step to E2E runs is to put it in a config file that is only used when E2E is explicitly requested. A single monolithic config would cause the build to run on every `pnpm test:unit` invocation, which is slow and surprising. Separate configs give each script a clean, predictable purpose.
 
 ## Risks / Trade-offs
 

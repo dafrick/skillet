@@ -7,7 +7,7 @@
 ## 2. Core Package Scaffold
 
 - [ ] 2.1 Create `packages/core/package.json` with `"name": "@skillet/core"`, `"type": "module"`, `"engines": { "node": ">=18" }`, `"private": false`, and placeholder `version`, `description`, `exports`, `files`, `scripts` fields
-- [ ] 2.2 Create `packages/core/tsconfig.json` targeting ESNext modules, `NodeNext` module resolution, `outDir: "dist"`, `declaration: true`, `strict: true`
+- [ ] 2.2 Create `packages/core/tsconfig.json` targeting ESNext modules, `NodeNext` module resolution, `outDir: "dist"`, `declaration: true`, `strict: true`, `lib: ["ESNext"]` — the `ESNext` lib is required for `Symbol.asyncDispose` and the `await using` pattern used in `createSandbox()`
 - [ ] 2.3 Create `packages/core/src/` directory with a placeholder `index.ts` that exports nothing (allows build to succeed from the start)
 - [ ] 2.4 Run `pnpm -F @skillet/core build` and confirm `dist/` is produced with no errors
 
@@ -19,7 +19,7 @@
 ## 4. Biome Configuration
 
 - [ ] 4.1 Add `@biomejs/biome` as a dev dependency at the workspace root (`pnpm add -Dw @biomejs/biome`)
-- [ ] 4.2 Create `biome.json` at the repo root with: formatter settings (2-space indent, single quotes, 100-char line width), linter `recommended` ruleset, `noConsole` enabled as error, `useImportType` enabled, `useNodejsImportProtocol` enabled, `organizeImports` enabled
+- [ ] 4.2 Create `biome.json` at the repo root with: formatter settings (2-space indent, single quotes, 100-char line width), linter `recommended` ruleset with `linter.rules.suspicious.noConsole: "error"`, `linter.rules.style.useImportType: "error"`, `linter.rules.style.useNodejsImportProtocol: "error"`; import organiser enabled via Biome v2 key `assist.actions.source.organizeImports: "on"` (not the v1 top-level `organizeImports` key)
 - [ ] 4.3 Add `overrides` in `biome.json` to disable `noConsole` for the `test/**` glob
 - [ ] 4.4 Add `pnpm lint` script at root (`biome check .`) and `pnpm format` script (`biome check --write .`)
 - [ ] 4.5 Run `pnpm lint` and confirm it exits 0 on the current (near-empty) codebase
@@ -28,7 +28,7 @@
 
 - [ ] 5.1 Add `lefthook` as a dev dependency at the workspace root (`pnpm add -Dw lefthook`)
 - [ ] 5.2 Create `lefthook.yml` at the repo root with:
-  - `pre-commit` hook: `biome check --write --changed` then `tsc --noEmit`
+  - `pre-commit` hook: `biome check --write {staged_files}` (Lefthook substitutes staged file paths; do NOT use `--changed` which requires Biome VCS config) then `tsc --noEmit -p packages/core/tsconfig.json` (explicit `-p` required — no root-level `tsconfig.json` exists)
   - `commit-msg` hook: regex validation against `^(feat|fix|chore|test|docs|refactor|perf|ci|build|spec)(\(.+\))?: .+`
 - [ ] 5.3 Run `lefthook install` to register hooks in `.git/hooks/`
 - [ ] 5.4 Verify pre-commit hook fires by staging a file and running `git commit --dry-run` (or equivalent)
@@ -36,8 +36,8 @@
 ## 6. Vitest Configuration
 
 - [ ] 6.1 Add `vitest` and `@vitest/coverage-v8` as dev dependencies in `packages/core/` (`pnpm add -D vitest @vitest/coverage-v8`)
-- [ ] 6.2 Create `packages/core/vitest.config.ts` with: `pool: 'forks'`, `maxWorkers: 4`, include patterns for `test/unit/**/*.test.ts`, `test/integration/**/*.test.ts`, `test/e2e/**/*.test.ts`, coverage config excluding `test/`, `fixtures/`, `dist/`, and config files
-- [ ] 6.3 Add a global setup file (`test/setup.ts`) referenced in `vitest.config.ts` that pre-builds `packages/core/` before the E2E suite; gate the build step to only run when E2E test files are included in the current run
+- [ ] 6.2 Create `packages/core/vitest.config.ts` with: `pool: 'forks'`, `maxWorkers: 4`, include patterns for `test/unit/**/*.test.ts` and `test/integration/**/*.test.ts` only (NOT e2e), coverage config excluding `test/`, `fixtures/`, `dist/`, and config files
+- [ ] 6.3 Create a separate `packages/core/vitest.config.e2e.ts` that extends the base config, adds `test/e2e/**/*.test.ts` to includes, and references a `globalSetup` file that runs `pnpm -F @skillet/core build` before tests; the `test:e2e` script SHALL use `vitest run --config vitest.config.e2e.ts` so the pre-build only runs when E2E is explicitly invoked
 - [ ] 6.4 Add scripts to `packages/core/package.json`: `test`, `test:unit`, `test:integration`, `test:e2e`, `test:coverage`
 - [ ] 6.5 Create `test/unit/.gitkeep`, `test/integration/helpers/.gitkeep`, `test/e2e/helpers/.gitkeep` to scaffold the directory tree
 - [ ] 6.6 Write a smoke test at `test/unit/smoke.test.ts` that asserts `1 + 1 === 2` and run `pnpm test:unit` to confirm the test harness works end-to-end
@@ -59,7 +59,7 @@
 
 ## 9. Integration Test Scaffolding
 
-- [ ] 9.1 Add `cli-testing-library` as a dev dependency in `packages/core/` (`pnpm add -D cli-testing-library`)
+- [ ] 9.1 Add `cli-testing-library` (the `crutchcorn` variant — https://github.com/crutchcorn/cli-testing-library) as a dev dependency in `packages/core/` (`pnpm add -D cli-testing-library`); verify the installed package exports `render`, `findByText`, and `userEvent` before proceeding
 - [ ] 9.2 Write `test/integration/install.test.ts` with `test.each` parameterized across all 5 adapter × scope combinations (claude/user, claude/project, copilot/project, agents/user, agents/project); cover: fresh install, idempotent install, drift detection, stale detection, update flows, uninstall, hook ordering — mark all as `todo` initially
 - [ ] 9.3 Write `test/integration/manifest.test.ts` covering: all required `.skill-meta.json` fields present, `postInstallHash` matches re-hash of installed folder — mark as `todo` initially
 - [ ] 9.4 Run `pnpm test:integration` and confirm all todo tests are listed as pending
