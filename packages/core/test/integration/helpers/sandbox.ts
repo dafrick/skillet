@@ -17,6 +17,10 @@ export async function createSandbox(): Promise<Sandbox> {
   await fs.mkdir(home, { recursive: true });
   await fs.mkdir(cwd, { recursive: true });
 
+  const originalHome = process.env.HOME;
+  const originalUserProfile = process.env.USERPROFILE;
+  const originalCwd = process.cwd();
+
   process.env.HOME = home;
   process.env.USERPROFILE = home;
   process.chdir(cwd);
@@ -26,7 +30,17 @@ export async function createSandbox(): Promise<Sandbox> {
     home,
     cwd,
     async [Symbol.asyncDispose]() {
-      process.chdir(os.tmpdir());
+      process.chdir(originalCwd);
+      if (originalHome === undefined) {
+        delete process.env.HOME;
+      } else {
+        process.env.HOME = originalHome;
+      }
+      if (originalUserProfile === undefined) {
+        delete process.env.USERPROFILE;
+      } else {
+        process.env.USERPROFILE = originalUserProfile;
+      }
       await fs.rm(root, { recursive: true, force: true });
     },
   };
