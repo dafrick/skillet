@@ -37,10 +37,10 @@ All scripts can be run from the repo root or from `packages/core/`.
 ### Running a single test file
 
 ```sh
-pnpm vitest run packages/core/test/unit/hash.test.ts
+pnpm --filter @skillet/core exec vitest run test/unit/hash.test.ts
 ```
 
-Adapt the path to any test file in the repo.
+Adapt the path to any test file under `packages/core/test/`.
 
 ## Commit Format
 
@@ -61,11 +61,17 @@ feat(core): add install command
 1. Ensure `main` is passing CI
 2. Bump the version in `packages/core/package.json`
 3. Commit with `chore(release): vX.Y.Z`
-4. Create and push a git tag `vX.Y.Z`
+4. Push the commit to `main`
+
+```sh
+git push origin main
+```
+
+5. Create and push a git tag `vX.Y.Z`
 
 ```sh
 git tag vX.Y.Z
 git push origin vX.Y.Z
 ```
 
-5. The `release.yml` GitHub Actions workflow publishes to npm automatically — no manual `npm publish` required
+6. The `release.yml` GitHub Actions workflow publishes to npm automatically — no manual publish required
