@@ -7,6 +7,9 @@
   "engines": {
     "node": ">=24"
   },
+  "bin": {
+    "hello-skill": "bin/cli.js"
+  },
   "exports": {
     ".": {
       "import": "./dist/index.js",
@@ -14,7 +17,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "bin"
   ],
   "scripts": {
     "build": "tsc",
@@ -24,12 +28,22 @@
     "test:integration": "vitest run --config vitest.config.ts test/integration",
     "test:e2e": "vitest run --config vitest.config.e2e.ts",
     "test:coverage": "vitest run --config vitest.config.ts --coverage",
-    "prepublishOnly": "pnpm build"
+    "prepublishOnly": "pnpm build && pnpm test"
+  },
+  "dependencies": {
+    "@inquirer/core": "^10.1.10",
+    "@inquirer/prompts": "^7.5.2",
+    "chalk": "^5.4.1",
+    "commander": "^14.0.0",
+    "gray-matter": "^4.0.3",
+    "update-notifier": "^7.3.1"
   },
   "devDependencies": {
     "@types/node": "^25.9.1",
+    "@types/update-notifier": "^6.0.8",
     "@vitest/coverage-v8": "^4.1.7",
     "cli-testing-library": "^3.0.1",
+    "typescript": "^5.8.3",
     "vitest": "^4.1.7"
   }
 }

@@ -1,0 +1,152 @@
+import { createHash } from 'node:crypto';
+import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { registry } from './adapters/index.js';
+import type { Adapter, Context } from './adapters/types.js';
+import { detectDrift, isStale } from './drift.js';
+import { hashSkill } from './hash.js';
+import type { NormalizedSkill } from './normalize.js';
+import type { Scope, SkillManifest } from './types.js';
+
+export { detectDrift, isStale };
+
+export const LIB_VERSION = '0.1.0';
+
+export interface InstallOptions {
+  pkg: { name: string; version: string };
+  hooks?: {
+    beforeInstall?: (
+      skill: NormalizedSkill,
+      adapter: Adapter,
+      ctx: Context,
+    ) => Promise<void> | void;
+    afterInstall?: (skill: NormalizedSkill, adapter: Adapter, ctx: Context) => Promise<void> | void;
+  };
+}
+
+export interface InstallRecord {
+  adapter: Adapter;
+  scope: Scope;
+  installPath: string;
+  manifest: SkillManifest;
+}
+
+/**
+ * Compute renderHash = sha256(contentHash|adapterId|libVersion)
+ */
+export function computeRenderHash(
+  contentHash: string,
+  adapterId: string,
+  libVersion: string,
+): string {
+  const hash = createHash('sha256');
+  hash.update(`${contentHash}|${adapterId}|${libVersion}`);
+  return `sha256:${hash.digest('hex')}`;
+}
+
+/**
+ * Make a Context object from the current environment and scope.
+ */
+export function makeContext(scope: Scope): Context {
+  return {
+    scope,
+    cwd: process.cwd(),
+    home: process.env.HOME ?? process.env.USERPROFILE ?? os.homedir(),
+  };
+}
+
+/**
+ * Recursively copy src tree to dst, creating parent directories.
+ */
+export async function copyTree(src: string, dst: string): Promise<void> {
+  await mkdir(dst, { recursive: true });
+  await cp(src, dst, { recursive: true });
+}
+
+/**
+ * Write .skill-manifest.json into installPath.
+ * Uses a replacer so that undefined values are written as null,
+ * ensuring all manifest fields are always present in the JSON output.
+ */
+export async function writeManifest(installPath: string, manifest: SkillManifest): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const replacer = (_key: string, value: unknown) => (value === undefined ? null : value);
+  await writeFile(
+    path.join(installPath, '.skill-manifest.json'),
+    JSON.stringify(manifest, replacer, 2),
+    'utf8',
+  );
+}
+
+/**
+ * Perform a single install: render, copy tree, write manifest.
+ * Calls beforeInstall before copy, afterInstall after manifest write.
+ */
+export async function performInstall(
+  skill: NormalizedSkill,
+  adapter: Adapter,
+  scope: Scope,
+  opts: InstallOptions,
+): Promise<string> {
+  const ctx = makeContext(scope);
+  const renderSrc = adapter.render(skill, ctx);
+  const installPath = adapter.resolveInstallPath(skill, ctx);
+
+  if (opts.hooks?.beforeInstall) {
+    await opts.hooks.beforeInstall(skill, adapter, ctx);
+  }
+
+  await copyTree(renderSrc, installPath);
+
+  const postInstallHash = await hashSkill(installPath); // manifest excluded by default
+  const renderHash = computeRenderHash(skill.contentHash, adapter.id, LIB_VERSION);
+
+  const manifest: SkillManifest = {
+    name: skill.name,
+    description: skill.description,
+    source: `npm:${opts.pkg.name}@${opts.pkg.version}`,
+    declaredVersion: skill.declaredVersion,
+    contentHash: skill.contentHash,
+    renderHash,
+    adapterId: adapter.id,
+    scope,
+    libVersion: LIB_VERSION,
+    installedAt: new Date().toISOString(),
+    postInstallHash,
+  };
+
+  await writeManifest(installPath, manifest);
+
+  if (opts.hooks?.afterInstall) {
+    await opts.hooks.afterInstall(skill, adapter, ctx);
+  }
+
+  return installPath;
+}
+
+/**
+ * Scan all registered adapter × scope combinations for existing installs.
+ * An install exists when .skill-manifest.json is present at the resolved path.
+ */
+export async function findExistingInstalls(skill: NormalizedSkill): Promise<InstallRecord[]> {
+  const records: InstallRecord[] = [];
+  const scopes: Scope[] = ['user', 'project'];
+
+  for (const adapter of registry.list()) {
+    for (const scope of scopes) {
+      if (!adapter.supportsScope(scope)) continue;
+      const ctx = makeContext(scope);
+      const installPath = adapter.resolveInstallPath(skill, ctx);
+      try {
+        const raw = await readFile(path.join(installPath, '.skill-manifest.json'), 'utf8');
+        const manifest = JSON.parse(raw) as SkillManifest;
+        records.push({ adapter, scope, installPath, manifest });
+      } catch {
+        // no manifest = not installed
+      }
+    }
+  }
+
+  return records;
+}
