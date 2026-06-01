@@ -35,39 +35,73 @@ describe('generateWordmark', () => {
 
   it('returns non-empty output for a short name in TTY context', async () => {
     vi.stubEnv('NO_COLOR', '');
+    const originalColumns = process.stdout.columns;
     Object.defineProperty(process.stdout, 'columns', { value: 200, configurable: true });
-    vi.resetModules();
-    const { generateWordmark } = await import('../../src/ui/wordmark.js');
-    const result = generateWordmark('SKILL');
-    expect(result.length).toBeGreaterThan(0);
+    try {
+      vi.resetModules();
+      const { generateWordmark } = await import('../../src/ui/wordmark.js');
+      const result = generateWordmark('SKILL');
+      expect(result.length).toBeGreaterThan(0);
+    } finally {
+      Object.defineProperty(process.stdout, 'columns', {
+        value: originalColumns,
+        configurable: true,
+      });
+    }
   });
 
   it('contains ANSI escape codes when NO_COLOR is not set', async () => {
     vi.unstubAllEnvs();
+    const originalColumns = process.stdout.columns;
     Object.defineProperty(process.stdout, 'columns', { value: 200, configurable: true });
-    vi.resetModules();
-    const { generateWordmark } = await import('../../src/ui/wordmark.js');
-    const result = generateWordmark('SKILL');
-    expect(result).toContain('\x1b[');
+    try {
+      vi.resetModules();
+      const { generateWordmark } = await import('../../src/ui/wordmark.js');
+      const result = generateWordmark('SKILL');
+      expect(result).toContain('\x1b[');
+    } finally {
+      Object.defineProperty(process.stdout, 'columns', {
+        value: originalColumns,
+        configurable: true,
+      });
+    }
   });
 
   it('returns plain text (no figlet rows) when name exceeds terminal width', async () => {
     vi.unstubAllEnvs();
+    const originalColumns = process.stdout.columns;
     Object.defineProperty(process.stdout, 'columns', { value: 1, configurable: true });
-    vi.resetModules();
-    const { generateWordmark } = await import('../../src/ui/wordmark.js');
-    const result = generateWordmark('AVERYLONGNAME');
-    // Should not contain figlet box-drawing characters
-    expect(result).not.toMatch(/[█╗╔═╝╚║]/);
+    try {
+      vi.resetModules();
+      const { generateWordmark } = await import('../../src/ui/wordmark.js');
+      const result = generateWordmark('AVERYLONGNAME');
+      // Should not contain figlet box-drawing characters
+      expect(result).not.toMatch(/[█╗╔═╝╚║]/);
+      // The fallback must contain the name itself (proves content, not just absence)
+      expect(result).toContain('AVERYLONGNAME');
+    } finally {
+      Object.defineProperty(process.stdout, 'columns', {
+        value: originalColumns,
+        configurable: true,
+      });
+    }
   });
 
   it('contains no ANSI codes when NO_COLOR is set', async () => {
     vi.stubEnv('NO_COLOR', '1');
+    const originalColumns = process.stdout.columns;
     Object.defineProperty(process.stdout, 'columns', { value: 200, configurable: true });
-    vi.resetModules();
-    const { generateWordmark } = await import('../../src/ui/wordmark.js');
-    const result = generateWordmark('SKILL');
-    expect(result).not.toContain('\x1b[');
+    try {
+      vi.resetModules();
+      const { generateWordmark } = await import('../../src/ui/wordmark.js');
+      const result = generateWordmark('SKILL');
+      expect(result).not.toContain('\x1b[');
+    } finally {
+      Object.defineProperty(process.stdout, 'columns', {
+        value: originalColumns,
+        configurable: true,
+      });
+    }
   });
 });
 

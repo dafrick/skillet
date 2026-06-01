@@ -33,8 +33,9 @@ const ROW_COLORS: Array<[number, number, number]> = [
   [156, 68, 28], //   Row 5: #9C441C (same as row 4)
 ];
 
-// Shadow box-drawing characters
-const SHADOW_CHARS = new Set(['╗', '╔', '═', '╝', '╚', '║', '╬', '╩', '╦', '╠', '╣']);
+// Shadow box-drawing characters used by ANSI Shadow figlet output.
+// ╬, ╩, ╦, ╠, ╣ are valid box-drawing chars but ANSI Shadow never emits them.
+const SHADOW_CHARS = new Set(['╗', '╔', '═', '╝', '╚', '║']);
 
 function renderLine(line: string, rowColor: [number, number, number]): string {
   const [r, g, b] = rowColor;
@@ -54,13 +55,17 @@ function renderLine(line: string, rowColor: [number, number, number]): string {
 // Falls back to plain (bold) text if the figlet output exceeds terminal width.
 export function generateWordmark(name: string): string {
   const noColor = process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== '';
-  const maxWidth = process.stdout.columns ?? 120;
+  // 120 is a generous common wide-terminal default when columns is unavailable
+  const DEFAULT_TERMINAL_WIDTH = 120;
+  const maxWidth = process.stdout.columns ?? DEFAULT_TERMINAL_WIDTH;
 
   // Generate figlet art
   const art = figlet.textSync(name, { font: 'ANSI Shadow' });
   const artLines = art.split('\n');
 
-  // Check if figlet output fits in terminal width
+  // Check if figlet output fits in terminal width.
+  // ANSI Shadow box-drawing characters (█, ╗, ╚, etc.) each have display width 1
+  // in standard terminals, so l.length is an accurate column count for this font.
   const maxLineWidth = Math.max(...artLines.map((l) => l.length));
   if (maxLineWidth > maxWidth) {
     // Overflow fallback — plain text
