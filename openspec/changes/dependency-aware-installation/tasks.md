@@ -12,17 +12,17 @@
 
 ## 2. Dependency Walk — Closure Resolution
 
-- [ ] 2.1 Implement `findPackageRoot(packageName: string, fromDir: string): string | null` — uses `createRequire` from `node:module` to resolve the package's main entry relative to `fromDir`, then walks parent directories to find the nearest `package.json`; returns the directory containing it, or null if not resolvable
-- [ ] 2.2 Implement `resolveSkillPackageClosure(packageRoot: string): SkillEntry[]` — walks `dependencies` (not `devDependencies`) of the package at `packageRoot`, using `findPackageRoot` to locate each dependency on disk
-- [ ] 2.3 In the walk, read each dependency's `package.json`; skip packages without a `skillet` marker, recurse into those that have one; maintain a visited set of resolved package roots to guard against corrupted `node_modules` graphs
-- [ ] 2.4 Attribute every skill in the closure (including the invoked package's own skills) to the top-level invoked package's npm name as `requestorRoot`
-- [ ] 2.5 Deduplicate the assembled install set by (content hash, target, scope) before handing to the write path
-- [ ] 2.6 Sort the install set in topological order (dependency-before-dependent)
-- [ ] 2.7 Record a warning (non-fatal) when a named dependency cannot be resolved on disk; continue the walk
-- [ ] 2.8 Write integration tests for `findPackageRoot` (using `installFixturePackages`): resolvable hoisted package, resolvable nested package produced by npm's own hoisting (achieved by giving the nested package a transitive dep that conflicts with another version at root level), unresolvable package returns null
-- [ ] 2.9 Write integration tests for the walk (using `installFixturePackages`): no marked dependencies (only own skills installed), one marked dependency, transitive marked dependency (A→B→C), diamond graph (A→B→D and A→C→D, D installed once), `devDependency` is skipped, unresolvable dependency produces warning and continues
-- [ ] 2.10 Write integration test: install a composed package; verify both the invoked package's skills and the dependency's skills appear in the target directory
-- [ ] 2.11 Write integration test asserting topological install order: install a package that depends on `superpowers-base`; capture the filesystem write sequence (e.g. via write-order timestamps or spy on the write path) and assert `superpowers-base`'s skills exist on disk before the dependent package's own skills are written
+- [x] 2.1 Implement `findPackageRoot(packageName: string, fromDir: string): string | null` — uses `createRequire` from `node:module` to resolve the package's main entry relative to `fromDir`, then walks parent directories to find the nearest `package.json`; returns the directory containing it, or null if not resolvable
+- [x] 2.2 Implement `resolveSkillPackageClosure(packageRoot: string): SkillEntry[]` — walks `dependencies` (not `devDependencies`) of the package at `packageRoot`, using `findPackageRoot` to locate each dependency on disk
+- [x] 2.3 In the walk, read each dependency's `package.json`; skip packages without a `skillet` marker, recurse into those that have one; maintain a visited set of resolved package roots to guard against corrupted `node_modules` graphs
+- [x] 2.4 Attribute every skill in the closure (including the invoked package's own skills) to the top-level invoked package's npm name as `requestorRoot`
+- [x] 2.5 Deduplicate the assembled install set by (content hash, target, scope) before handing to the write path
+- [x] 2.6 Sort the install set in topological order (dependency-before-dependent)
+- [x] 2.7 Record a warning (non-fatal) when a named dependency cannot be resolved on disk; continue the walk
+- [x] 2.8 Write integration tests for `findPackageRoot` (using `installFixturePackages`): resolvable hoisted package, resolvable nested package produced by npm's own hoisting (achieved by giving the nested package a transitive dep that conflicts with another version at root level), unresolvable package returns null
+- [x] 2.9 Write integration tests for the walk (using `installFixturePackages`): no marked dependencies (only own skills installed), one marked dependency, transitive marked dependency (A→B→C), diamond graph (A→B→D and A→C→D, D installed once), `devDependency` is skipped, unresolvable dependency produces warning and continues
+- [x] 2.10 Write integration test: install a composed package; verify both the invoked package's skills and the dependency's skills appear in the target directory
+- [x] 2.11 Write integration test asserting topological install order: install a package that depends on `superpowers-base`; capture the filesystem write sequence (e.g. via write-order timestamps or spy on the write path) and assert `superpowers-base`'s skills exist on disk before the dependent package's own skills are written
 
 ## 3. `requestedBy` Manifest Field
 
@@ -34,10 +34,10 @@
 - [x] 3.6 Handle manifests without `requestedBy` (v0.1.0 era): skip them in the GC scan; they persist until manually removed or overwritten by a v0.2.0 install of the same skill
 - [x] 3.7 Write unit tests for the union: same root is idempotent (no duplicate entry); new root adds to set; union after same-source update (content changed); `requestedBy` excluded from hash; `requestedBy` is an unordered set (no duplicates)
 - [x] 3.8 Write integration test: install two packages sharing a base dependency; verify shared skill's `requestedBy` contains both package names
-- [ ] 3.9 Add a collision message for the version-skew case: when `source` package name matches but version differs, emit a message naming both versions and the roots that required them (before the existing prompt/`--force` step)
-- [ ] 3.10 Enhance the cross-package name collision message: when `source` indicates a genuinely different package owns the skill folder, name both packages from their `source` fields to explain why the slot is occupied (uses existing v0.1.0 collision machinery; only the message changes)
-- [ ] 3.11 Write integration test for the version-skew collision message (3.9): arrange two fixture packages requiring different major versions of a shared base whose skills hash differently; trigger the install write path; assert the emitted message names both package versions and both root package names (not just a generic collision message)
-- [ ] 3.12 Write integration test for the cross-package name collision message (3.10): arrange two unrelated packages that both ship a skill with the same folder name; trigger the install write path for the second package; assert the message identifies both source package names from their `source` fields
+- [x] 3.9 Add a collision message for the version-skew case: when `source` package name matches but version differs, emit a message naming both versions and the roots that required them (before the existing prompt/`--force` step)
+- [x] 3.10 Enhance the cross-package name collision message: when `source` indicates a genuinely different package owns the skill folder, name both packages from their `source` fields to explain why the slot is occupied (uses existing v0.1.0 collision machinery; only the message changes)
+- [x] 3.11 Write integration test for the version-skew collision message (3.9): arrange two fixture packages requiring different major versions of a shared base whose skills hash differently; trigger the install write path; assert the emitted message names both package versions and both root package names (not just a generic collision message)
+- [x] 3.12 Write integration test for the cross-package name collision message (3.10): arrange two unrelated packages that both ship a skill with the same folder name; trigger the install write path for the second package; assert the message identifies both source package names from their `source` fields
 
 ## 4. Uninstall GC — Distributed Refcount
 

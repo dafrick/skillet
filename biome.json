@@ -35,7 +35,14 @@
   },
   "overrides": [
     {
-      "includes": ["**/test/**", "**/src/run.ts", "**/src/marker.ts", "**/bin/**"],
+      "includes": [
+        "**/test/**",
+        "**/src/run.ts",
+        "**/src/marker.ts",
+        "**/src/install.ts",
+        "**/src/walk.ts",
+        "**/bin/**"
+      ],
       "linter": {
         "rules": {
           "suspicious": {

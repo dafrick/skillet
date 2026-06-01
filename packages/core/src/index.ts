@@ -14,3 +14,5 @@ export type { RunOptions } from './run.js';
 export { run } from './run.js';
 export type { Scope, SkillManifest } from './types.js';
 export { applyUpdate, removeInstall } from './update.js';
+export type { SkillEntry } from './walk.js';
+export { findPackageRoot, resolveSkillPackageClosure } from './walk.js';
