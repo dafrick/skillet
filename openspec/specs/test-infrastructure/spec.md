@@ -95,6 +95,7 @@ The following scenarios SHALL be covered for each valid combination:
 | `libVersion` | string | semver string of `@skillet-cli/core` used for the install | package version at install time |
 | `installedAt` | string | ISO 8601 UTC (`new Date().toISOString()` format, e.g. `"2026-05-31T12:00:00.000Z"`) | set at install time |
 | `postInstallHash` | string | `sha256:` prefix + 64-char lowercase hex digest | re-hash of installed folder |
+| `requestedBy` | string[] | non-empty array; contains the invoking package name; no duplicates; order not significant | written at install time; seeded with `[requestorRoot]` for new installs |
 
 Tests asserting `installedAt` SHALL check that it is a valid ISO 8601 string (e.g. `/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/`) rather than an exact value.
 - **Idempotent install**: running install twice on an unmodified install produces no changes and exits successfully

@@ -8,6 +8,7 @@
 - [ ] 1.6 Write unit tests for `discoverSkillTrees`: directory with multiple skill trees, subdirectory lacking `SKILL.md` is skipped, empty directory returns empty array, called once per entry in a multi-entry `skillsDirs`, non-existent directory returns empty array with warning
 - [ ] 1.7 Implement `readPackageName(packageRoot: string): string` — reads the `name` field from `package.json`; records a warning and falls back to `path.basename(packageRoot)` if the field is absent; this value is passed as `requestorRoot` to all install and walk operations in a given invocation
 - [ ] 1.8 Write unit tests for `readPackageName`: name field present, name field absent → warning + directory basename
+- [ ] 1.9 Add `installFixturePackages(sandbox, fixtures: { name: string; version: string; skillet?: object; deps?: Record<string, string> }[])` integration test helper in `test/integration/helpers/` — writes each fixture as a real npm package directory under `<sandbox.cwd>/fixtures/<name>/` (a `package.json` with the fixture's own `file:` deps where `deps` is provided, plus a stub `index.js` as `main`), then writes a root `package.json` in `<sandbox.cwd>` whose `dependencies` point to each top-level fixture via `file:./fixtures/<name>`, then runs `npm install --ignore-scripts` in `<sandbox.cwd>` to produce a real `node_modules` tree; `createRequire` resolves these packages identically to production, including npm's hoisting and nesting behaviour; used by all dependency-walk integration tests
 
 ## 2. Dependency Walk — Closure Resolution
 
@@ -18,9 +19,11 @@
 - [ ] 2.5 Deduplicate the assembled install set by (content hash, target, scope) before handing to the write path
 - [ ] 2.6 Sort the install set in topological order (dependency-before-dependent)
 - [ ] 2.7 Record a warning (non-fatal) when a named dependency cannot be resolved on disk; continue the walk
-- [ ] 2.8 Write unit tests for `findPackageRoot`: resolvable hoisted package, resolvable nested package, unresolvable package returns null
-- [ ] 2.9 Write unit tests for the walk: no marked dependencies (only own skills installed), one marked dependency, transitive marked dependency (A→B→C), diamond graph (A→B→D and A→C→D, D installed once), `devDependency` is skipped, unresolvable dependency produces warning and continues
+- [ ] 2.8 Write integration tests for `findPackageRoot` (using `installFixturePackages`): resolvable hoisted package, resolvable nested package produced by npm's own hoisting (achieved by giving the nested package a transitive dep that conflicts with another version at root level), unresolvable package returns null
+- [ ] 2.9 Write integration tests for the walk (using `installFixturePackages`): no marked dependencies (only own skills installed), one marked dependency, transitive marked dependency (A→B→C), diamond graph (A→B→D and A→C→D, D installed once), `devDependency` is skipped, unresolvable dependency produces warning and continues
 - [ ] 2.10 Write integration test: install a composed package; verify both the invoked package's skills and the dependency's skills appear in the target directory
+- [ ] 2.11 Write integration test asserting topological install order: install a package that depends on `superpowers-base`; capture the filesystem write sequence (e.g. via write-order timestamps or spy on the write path) and assert `superpowers-base`'s skills exist on disk before the dependent package's own skills are written
+
 ## 3. `requestedBy` Manifest Field
 
 - [ ] 3.1 Add `requestedBy: string[]` to the `.skill-meta.json` TypeScript type in `packages/core`
@@ -33,6 +36,8 @@
 - [ ] 3.8 Write integration test: install two packages sharing a base dependency; verify shared skill's `requestedBy` contains both package names
 - [ ] 3.9 Add a collision message for the version-skew case: when `source` package name matches but version differs, emit a message naming both versions and the roots that required them (before the existing prompt/`--force` step)
 - [ ] 3.10 Enhance the cross-package name collision message: when `source` indicates a genuinely different package owns the skill folder, name both packages from their `source` fields to explain why the slot is occupied (uses existing v0.1.0 collision machinery; only the message changes)
+- [ ] 3.11 Write integration test for the version-skew collision message (3.9): arrange two fixture packages requiring different major versions of a shared base whose skills hash differently; trigger the install write path; assert the emitted message names both package versions and both root package names (not just a generic collision message)
+- [ ] 3.12 Write integration test for the cross-package name collision message (3.10): arrange two unrelated packages that both ship a skill with the same folder name; trigger the install write path for the second package; assert the message identifies both source package names from their `source` fields
 
 ## 4. Uninstall GC — Distributed Refcount
 
@@ -43,6 +48,7 @@
 - [ ] 4.5 Write unit tests for `gcUninstall`: last requestor removed and skill is pristine → deleted without prompt; last requestor removed and skill is modified (TTY) → prompted; last requestor removed and skill is modified (CI, no `--force`) → warning, not deleted; last requestor removed and skill is modified (CI, `--force`) → deleted; one of many requestors removed → manifest rewritten, skill kept; skill not listing `P` → untouched; manifest without `requestedBy` (v0.1.0 era) → skipped, not removed
 - [ ] 4.6 Write integration test for the two-roots scenario: install `travel-planner` and `recipe-planner` (both depending on `superpowers-base`); uninstall `travel-planner`; assert `superpowers-base` skills remain; uninstall `recipe-planner`; assert `superpowers-base` skills are removed
 - [ ] 4.7 Write integration test for GC matching on recorded `requestedBy`: install `P` (which depends on `superpowers-base`); modify `P`'s `package.json` to drop the dependency without reinstalling; uninstall `P`; assert `superpowers-base` skills are still GC'd (because `requestedBy` was recorded at install time)
+- [ ] 4.8 Write integration test for multi-target GC independence: install `P` into two targets (e.g. `claude/user` and `agents/user`); uninstall from both targets; assert each target's GC runs independently — manifests in one target are not modified or removed as a side effect of GC in the other target
 
 ## 5. `run()` API and Back-Compatibility
 

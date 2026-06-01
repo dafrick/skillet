@@ -129,6 +129,17 @@ Because `.skill-meta.json` manifests are already written per-install-per-target,
 
 **Rationale:** Same reason `.skill-meta.json` is already excluded in v0.1.0 — it is library metadata, and hashing it would be circular (the hash is stored in the same manifest as `requestedBy`).
 
+### Decision 11 — Integration tests for the dependency walk use real `npm install` via `file:` dependencies, not a synthetic `node_modules`
+
+**Choice:** Write fixture packages as real directories under the sandbox, wire them with `file:` deps in the sandbox root's `package.json`, and run `npm install --ignore-scripts` to produce a real `node_modules` tree.
+
+**Alternatives considered:**
+- Hand-roll a synthetic `node_modules` by placing `package.json` and stub `index.js` files at the expected paths directly in the test helper.
+
+**Rationale:** `findPackageRoot` relies on `createRequire` from `node:module`, which resolves packages by walking the real `node_modules` hierarchy that npm produced — including hoisting, nesting due to version conflicts, and scoped-package directory layout. A hand-rolled synthetic fixture would need to replicate that layout correctly to make `createRequire` succeed; any deviation (wrong `exports` field, missing stub entry point, incorrect nesting depth) would cause silent test invalidity — the test passes against a fixture that no real install would ever produce. Using real `npm install` means the fixture is built by the same tool that builds production installs: hoisting, nesting, and `createRequire` resolution are all genuine, so a passing test proves the code works against the actual surface it targets.
+
+The `file:` protocol is supported by both npm and pnpm with no registry required. Each fixture package is just a directory with a `package.json` and a stub `index.js`; creating them costs milliseconds. The `npm install` step itself adds a few seconds per test file that uses the helper; test files should share a single fixture installation across their cases (e.g. via a `beforeAll`) rather than re-running npm per test.
+
 ## Risks / Trade-offs
 
 **Shared-dependency version skew** → If two roots require incompatible major versions of the same base, npm may place two copies on disk. They collide on the same skill folder name. This falls through to the existing §5.4 collision path (different `contentHash`, same `source` package name, different version), handled as update/prompt with a specialized version-conflict message (Decision 9). The correct long-term answer may involve `peerDependencies`; deferred to a future revision. Risk level: low today, revisit when the ecosystem has multiple competing base packages.
