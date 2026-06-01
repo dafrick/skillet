@@ -11,7 +11,7 @@ import type { Scope, SkillManifest } from './types.js';
 
 export { detectDrift, isStale };
 
-export const LIB_VERSION = '0.1.0';
+export const LIB_VERSION = '0.2.0';
 
 /**
  * Strip the `npm:` prefix and the `@version` suffix from a source string,
