@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import os from 'node:os';
 import { checkbox, select } from '@inquirer/prompts';
 import { Command } from 'commander';
@@ -13,7 +14,12 @@ import { basil, chili, dim, ember400 } from './ui/colors.js';
 import { renderFullHeader, renderLightHeader } from './ui/header.js';
 import { createSpinner } from './ui/spinner.js';
 import { pickVerb } from './ui/verbs.js';
+import { deriveDisplayName } from './ui/wordmark.js';
 import { applyUpdate, removeInstall } from './update.js';
+
+const _require = createRequire(import.meta.url);
+const corePackage = _require('../package.json') as { version: string };
+const coreVersion = corePackage.version;
 
 export interface RunOptions {
   skillDir: string;
@@ -114,7 +120,15 @@ async function runInstall(
 ): Promise<void> {
   const isTTY = process.stdout.isTTY ?? false;
 
-  process.stdout.write(renderFullHeader());
+  const resolvedDisplayName = deriveDisplayName(pkg.name);
+  process.stdout.write(
+    renderFullHeader({
+      resolvedWordmarkName: resolvedDisplayName,
+      resolvedDisplayName,
+      pkg,
+      coreVersion,
+    }),
+  );
 
   const home = process.env.HOME ?? process.env.USERPROFILE ?? os.homedir();
   const cwd = process.cwd();
@@ -211,7 +225,15 @@ async function runUpdate(
   opts: { force?: boolean; addNew?: boolean },
 ): Promise<void> {
   const isTTY = process.stdout.isTTY ?? false;
-  process.stdout.write(renderFullHeader());
+  const resolvedDisplayNameUpdate = deriveDisplayName(pkg.name);
+  process.stdout.write(
+    renderFullHeader({
+      resolvedWordmarkName: resolvedDisplayNameUpdate,
+      resolvedDisplayName: resolvedDisplayNameUpdate,
+      pkg,
+      coreVersion,
+    }),
+  );
 
   const records = await findExistingInstalls(skill);
 
@@ -301,7 +323,15 @@ async function runUninstall(
   opts: { yes?: boolean },
 ): Promise<void> {
   const isTTY = process.stdout.isTTY ?? false;
-  process.stdout.write(renderLightHeader(pkg.version));
+  const resolvedDisplayNameUninstall = deriveDisplayName(pkg.name);
+  process.stdout.write(
+    renderLightHeader({
+      resolvedWordmarkName: resolvedDisplayNameUninstall,
+      resolvedDisplayName: resolvedDisplayNameUninstall,
+      pkg,
+      coreVersion,
+    }),
+  );
 
   const records = await findExistingInstalls(skill);
   if (records.length === 0) {
@@ -346,7 +376,15 @@ async function runList(
   skill: NormalizedSkill,
   pkg: { name: string; version: string },
 ): Promise<void> {
-  process.stdout.write(renderLightHeader(pkg.version));
+  const resolvedDisplayNameList = deriveDisplayName(pkg.name);
+  process.stdout.write(
+    renderLightHeader({
+      resolvedWordmarkName: resolvedDisplayNameList,
+      resolvedDisplayName: resolvedDisplayNameList,
+      pkg,
+      coreVersion,
+    }),
+  );
 
   const records = await findExistingInstalls(skill);
   if (records.length === 0) {

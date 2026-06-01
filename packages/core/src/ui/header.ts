@@ -1,18 +1,39 @@
-import { dim, ember500 } from './colors.js';
-import { randomTagline } from './taglines.js';
-import { renderWordmark } from './wordmark.js';
+import { dim, ember500, irisBright } from './colors.js';
+import { generateWordmark } from './wordmark.js';
 
-// Full header: wordmark + tagline — for install/update
-export function renderFullHeader(): string {
-  if (!process.stdout.isTTY || process.env.CI) return '';
-  return `${renderWordmark()}\n\n  ${dim(randomTagline())}\n`;
+export interface HeaderOpts {
+  resolvedWordmarkName: string; // for full header wordmark (figlet input)
+  resolvedDisplayName: string; // for light header prefix
+  pkg: { name: string; version: string; description?: string };
+  coreVersion: string; // @skillet-cli/core version for attribution line
 }
 
-// Light header: SKILLET vX.Y.Z · blurb + tagline — for list/uninstall
-export function renderLightHeader(version: string): string {
+// OSC 8 hyperlink: ]8;;<url>\<text>]8;;\
+function osc8Link(url: string, text: string): string {
+  return `\x1b]8;;${url}\x1b\\${text}\x1b]8;;\x1b\\`;
+}
+
+function renderAttributionLine(coreVersion: string): string {
+  const primary = irisBright.bold(`Packaged with Skillet v${coreVersion}`);
+  const secondary = dim(
+    `· package your own for any agent in one step ${osc8Link('https://github.com/dafrick/skillet', '↗')}`,
+  );
+  return `  ${primary} ${secondary}`;
+}
+
+// Full header: wordmark + attribution — for install/update
+export function renderFullHeader(opts: HeaderOpts): string {
   if (!process.stdout.isTTY || process.env.CI) return '';
-  const title = ember500.bold('SKILLET');
-  const meta = dim(`v${version}  ·  Install agent skills across your AI tools`);
-  const tagline = dim(randomTagline());
-  return `${title} ${meta}\n  ${tagline}\n`;
+  const wordmark = generateWordmark(opts.resolvedWordmarkName);
+  const attribution = renderAttributionLine(opts.coreVersion);
+  return `${wordmark}\n${attribution}\n\n`;
+}
+
+// Light header: DISPLAY-NAME vX.Y.Z + attribution + description — for list/uninstall
+export function renderLightHeader(opts: HeaderOpts): string {
+  if (!process.stdout.isTTY || process.env.CI) return '';
+  const title = ember500.bold(`${opts.resolvedDisplayName} v${opts.pkg.version}`);
+  const attribution = renderAttributionLine(opts.coreVersion);
+  const description = dim(opts.pkg.description ?? '');
+  return `${title}\n${attribution}\n  ${description}\n`;
 }
