@@ -9,7 +9,7 @@ import type { Adapter } from './adapters/types.js';
 import { detectDrift, isStale } from './drift.js';
 import type { InstallOptions, InstallRecord } from './install.js';
 import { findExistingInstalls, performInstall } from './install.js';
-import { discoverSkillTrees, readSkilletMarker } from './marker.js';
+import { discoverSkillTrees, readPackageName, readSkilletMarker } from './marker.js';
 import { type NormalizedSkill, normalizeSkill } from './normalize.js';
 import type { Scope } from './types.js';
 import { basil, chili, dim, ember400 } from './ui/colors.js';
@@ -18,6 +18,7 @@ import { createSpinner } from './ui/spinner.js';
 import { pickStandardVerb, pickVerb } from './ui/verbs.js';
 import { deriveDisplayName } from './ui/wordmark.js';
 import { applyUpdate, removeInstall } from './update.js';
+import { resolveSkillPackageClosure } from './walk.js';
 
 const _require = createRequire(import.meta.url);
 const corePackage = _require('../package.json') as { version: string };
@@ -121,7 +122,13 @@ async function runInstall(
   skill: NormalizedSkill,
   pkg: { name: string; version: string },
   hooks: RunOptions['hooks'],
-  opts: { target: string[]; scope?: string; yes?: boolean; force?: boolean },
+  opts: {
+    target: string[];
+    scope?: string;
+    yes?: boolean;
+    force?: boolean;
+    requestorRoot?: string;
+  },
   verbMode: 'fun' | 'standard',
   resolvedDisplayName: string,
   resolvedWordmarkName: string,
@@ -157,6 +164,7 @@ async function runInstall(
 
   const installOpts: InstallOptions = {
     pkg,
+    requestorRoot: opts.requestorRoot,
     hooks: { beforeInstall: hooks?.beforeInstall, afterInstall: hooks?.afterInstall },
   };
   const verb =
@@ -403,6 +411,7 @@ function registerInstallCommand(
   verbMode: 'fun' | 'standard',
   resolvedDisplayName: string,
   resolvedWordmarkName: string,
+  requestorRoot?: string,
 ): void {
   program
     .command('install')
@@ -414,7 +423,7 @@ function registerInstallCommand(
     .action(async (opts: { target: string[]; scope?: string; yes?: boolean; force?: boolean }) => {
       process.stdout.write(renderFullHeader({ resolvedWordmarkName, resolvedDisplayName, pkg, coreVersion }));
       for (const skill of skills) {
-        await runInstall(skill, pkg, hooks, opts, verbMode, resolvedDisplayName, resolvedWordmarkName);
+        await runInstall(skill, pkg, hooks, { ...opts, requestorRoot }, verbMode, resolvedDisplayName, resolvedWordmarkName);
       }
     });
 }
@@ -487,10 +496,14 @@ export async function run(options: RunOptions): Promise<void> {
 
   if (!pkg) throw new Error('pkg is required — pass { pkg } to run()');
 
-  // Resolve skill directories
-  let resolvedSkillDirs: string[];
+  // The top-level invoked package's npm name — used as requestorRoot for all skills in the closure.
+  const requestorRoot = await readPackageName(process.cwd()).catch(() => pkg.name);
+
+  // Resolve skill directories for the invoked package
+  const invokedPackageRoot: string = process.cwd();
+  let invokedSkillDirs: string[];
   if (skillDir !== undefined) {
-    resolvedSkillDirs = [skillDir];
+    invokedSkillDirs = [skillDir];
   } else {
     const marker = await readSkilletMarker(process.cwd());
     if (!marker) {
@@ -511,8 +524,13 @@ export async function run(options: RunOptions): Promise<void> {
           'Each skill tree must contain a SKILL.md file.',
       );
     }
-    resolvedSkillDirs = discovered;
+    invokedSkillDirs = discovered;
   }
+
+  // Walk the dependency closure to get all skills (invoked + transitive dependencies),
+  // in topological order (dependency skills before dependent skills).
+  const skillEntries = await resolveSkillPackageClosure(invokedPackageRoot, invokedSkillDirs);
+  const resolvedSkillDirs = skillEntries.map((e) => e.skillDir);
 
   // Resolve display and wordmark names once
   const resolvedDisplayName = (options.displayName ?? deriveDisplayName(pkg.name)).toUpperCase();
@@ -551,6 +569,7 @@ export async function run(options: RunOptions): Promise<void> {
     verbMode,
     resolvedDisplayName,
     resolvedWordmarkName,
+    requestorRoot,
   );
   registerUpdateCommand(program, skills, pkg, verbMode, resolvedDisplayName, resolvedWordmarkName);
   registerUninstallCommand(

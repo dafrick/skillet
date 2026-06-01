@@ -1,0 +1,171 @@
+import * as fs from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import * as path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { discoverSkillTrees, readSkilletMarker } from './marker.js';
+
+export interface SkillEntry {
+  /** Absolute path to a skill tree directory (containing SKILL.md) */
+  skillDir: string;
+  /** Absolute path to the npm package root that owns this skill */
+  packageRoot: string;
+  /** npm package name of the owning package */
+  packageName: string;
+  /** 0 = invoked package, 1 = direct dep, 2 = transitive, etc. */
+  depth: number;
+}
+
+/**
+ * Resolve a package name to its on-disk package root directory.
+ *
+ * Uses `createRequire` from `node:module` to resolve the package's main entry
+ * relative to `fromDir`, then walks parent directories upward until finding
+ * the directory that contains `package.json`. Returns that directory, or null
+ * if resolution throws (package not installed).
+ */
+export async function findPackageRoot(
+  packageName: string,
+  fromDir: string,
+): Promise<string | null> {
+  const require = createRequire(pathToFileURL(`${fromDir}/`).href);
+
+  let resolvedEntry: string;
+  try {
+    resolvedEntry = require.resolve(packageName);
+  } catch {
+    return null;
+  }
+
+  // Walk parent directories from the resolved entry path upward
+  // to find the directory containing package.json.
+  let dir = path.dirname(resolvedEntry);
+  while (true) {
+    const pkgJsonPath = path.join(dir, 'package.json');
+    try {
+      await fs.access(pkgJsonPath);
+      return dir;
+    } catch {
+      // Not found here — go up
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) {
+      // Reached filesystem root without finding package.json
+      return null;
+    }
+    dir = parent;
+  }
+}
+
+/**
+ * Resolve the full set of skill entries for a package and its transitive
+ * marked dependencies.
+ *
+ * Algorithm:
+ * 1. Start with the invoked package's own skill dirs (depth 0).
+ * 2. Read `invokedPackageRoot/package.json` → get `dependencies` (NOT `devDependencies`).
+ * 3. For each dep name, call `findPackageRoot`:
+ *    - If null: warn and continue.
+ *    - If found: read that package's `package.json`; if no `skillet` marker, skip;
+ *      if marked, call `readSkilletMarker` + `discoverSkillTrees` to get its skill
+ *      dirs, recurse.
+ * 4. Maintain a `visited: Set<string>` of resolved package roots to avoid cycles.
+ * 5. Return all `SkillEntry[]` in topological order: dependency skills before the
+ *    skills of packages that depend on them.
+ * 6. Deduplicate by `skillDir` path before returning.
+ */
+export async function resolveSkillPackageClosure(
+  invokedPackageRoot: string,
+  invokedSkillDirs: string[],
+): Promise<SkillEntry[]> {
+  const result: SkillEntry[] = [];
+  const visited = new Set<string>();
+  const seenSkillDirs = new Set<string>();
+
+  async function getPackageName(pkgRoot: string): Promise<string> {
+    const pkgJsonPath = path.join(pkgRoot, 'package.json');
+    try {
+      const raw = await fs.readFile(pkgJsonPath, 'utf8');
+      const pkg = JSON.parse(raw) as Record<string, unknown>;
+      if (typeof pkg.name === 'string' && pkg.name.length > 0) {
+        return pkg.name;
+      }
+    } catch {
+      // fall through
+    }
+    return path.basename(pkgRoot);
+  }
+
+  async function walk(pkgRoot: string, skillDirs: string[], depth: number): Promise<void> {
+    if (visited.has(pkgRoot)) return;
+    visited.add(pkgRoot);
+
+    const packageName = await getPackageName(pkgRoot);
+
+    // Read dependencies (not devDependencies) from package.json
+    const pkgJsonPath = path.join(pkgRoot, 'package.json');
+    let dependencies: Record<string, string> = {};
+    try {
+      const raw = await fs.readFile(pkgJsonPath, 'utf8');
+      const pkg = JSON.parse(raw) as Record<string, unknown>;
+      if (
+        pkg.dependencies !== null &&
+        typeof pkg.dependencies === 'object' &&
+        !Array.isArray(pkg.dependencies)
+      ) {
+        dependencies = pkg.dependencies as Record<string, string>;
+      }
+    } catch {
+      // If we can't read package.json, proceed with no deps
+    }
+
+    // Walk dependencies FIRST (depth-first, dependencies before dependents)
+    for (const depName of Object.keys(dependencies)) {
+      const depRoot = await findPackageRoot(depName, pkgRoot);
+      if (depRoot === null) {
+        console.warn(
+          `[skillet] Could not resolve dependency "${depName}" from ${pkgRoot}. Skipping.`,
+        );
+        continue;
+      }
+
+      // Skip if already visited
+      if (visited.has(depRoot)) continue;
+
+      // Check if the dep has a skillet marker
+      const marker = await readSkilletMarker(depRoot);
+      if (marker === null) {
+        // Not marked — skip (but still visit to avoid re-processing)
+        visited.add(depRoot);
+        continue;
+      }
+
+      // Discover the dep's skill trees
+      const depSkillDirs: string[] = [];
+      for (const skillsDir of marker.skillsDirs) {
+        const absSkillsDir = path.resolve(depRoot, skillsDir);
+        const trees = await discoverSkillTrees(absSkillsDir);
+        depSkillDirs.push(...trees);
+      }
+
+      // Recurse into dep (adds dep's entries BEFORE this package's entries)
+      await walk(depRoot, depSkillDirs, depth + 1);
+    }
+
+    // Add this package's own skills AFTER its dependencies (topological order)
+    for (const skillDir of skillDirs) {
+      if (!seenSkillDirs.has(skillDir)) {
+        seenSkillDirs.add(skillDir);
+        result.push({
+          skillDir,
+          packageRoot: pkgRoot,
+          packageName,
+          depth,
+        });
+      }
+    }
+  }
+
+  await walk(invokedPackageRoot, invokedSkillDirs, 0);
+
+  return result;
+}

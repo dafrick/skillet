@@ -125,7 +125,20 @@ export async function performInstall(
       const sourcePkgName = existingManifest.source
         .replace(/^npm:/, '')
         .replace(/@[^@/][^/]*$/, '');
+      const newSource = `npm:${opts.pkg.name}@${opts.pkg.version}`;
       if (sourcePkgName === opts.pkg.name) {
+        // Same source package name, but different content (version skew) — Task 3.9
+        if (existingManifest.source !== newSource) {
+          const existingRequestors = Array.isArray(existingManifest.requestedBy)
+            ? existingManifest.requestedBy
+            : [];
+          const allRequestors = opts.requestorRoot
+            ? Array.from(new Set([...existingRequestors, opts.requestorRoot]))
+            : existingRequestors;
+          console.warn(
+            `[skillet] Version conflict: skill "${skill.name}" is installed from ${existingManifest.source} (requested by ${allRequestors.join(', ')}) but ${opts.pkg.name} requires ${newSource}`,
+          );
+        }
         // Same source package, new content — overwrite if pristine, skip if drifted
         const driftStatus = await detectDrift(installPath);
         if (driftStatus === 'pristine') {
@@ -135,8 +148,13 @@ export async function performInstall(
           skipCopy = true;
           driftedSameSource = true;
         }
+      } else {
+        // Different source package — Task 3.10: emit cross-package name collision message
+        console.warn(
+          `[skillet] Name collision: skill "${skill.name}" is already installed from ${existingManifest.source}; ${opts.pkg.name} also ships a skill with this name (${newSource})`,
+        );
+        // proceed with normal copyTree (existing collision behavior)
       }
-      // Different source package — proceed with normal copyTree (existing collision behavior)
     }
   }
 
