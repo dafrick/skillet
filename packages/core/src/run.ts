@@ -8,6 +8,7 @@ import type { Adapter } from './adapters/types.js';
 import { detectDrift, isStale } from './drift.js';
 import type { InstallOptions, InstallRecord } from './install.js';
 import { findExistingInstalls, performInstall } from './install.js';
+import { discoverSkillTrees, readSkilletMarker } from './marker.js';
 import { type NormalizedSkill, normalizeSkill } from './normalize.js';
 import type { Scope } from './types.js';
 import { basil, chili, dim, ember400 } from './ui/colors.js';
@@ -22,7 +23,7 @@ const corePackage = _require('../package.json') as { version: string };
 const coreVersion = corePackage.version;
 
 export interface RunOptions {
-  skillDir: string;
+  skillDir?: string;
   pkg: { name: string; version: string };
   argv?: string[];
   verbMode?: 'fun' | 'standard';
@@ -515,6 +516,33 @@ export async function run(options: RunOptions): Promise<void> {
 
   if (!pkg) throw new Error('pkg is required — pass { pkg } to run()');
 
+  // Resolve the skill directory
+  let resolvedSkillDir: string;
+  if (skillDir !== undefined) {
+    resolvedSkillDir = skillDir;
+  } else {
+    const marker = await readSkilletMarker(process.cwd());
+    if (!marker) {
+      throw new Error(
+        'No skillDir provided and no "skillet" key found in package.json. ' +
+          'Either pass skillDir to run() or add a "skillet" key to your package.json.',
+      );
+    }
+    let discovered: string[] = [];
+    for (const dir of marker.skillsDirs) {
+      const abs = dir.startsWith('/') ? dir : `${process.cwd()}/${dir}`;
+      const trees = await discoverSkillTrees(abs);
+      discovered = [...discovered, ...trees];
+    }
+    if (discovered.length === 0) {
+      throw new Error(
+        `No skill trees found. Searched directories: ${marker.skillsDirs.join(', ')}. ` +
+          'Each skill tree must contain a SKILL.md file.',
+      );
+    }
+    resolvedSkillDir = discovered[0];
+  }
+
   // Resolve display and wordmark names once
   const resolvedDisplayName = (options.displayName ?? deriveDisplayName(pkg.name)).toUpperCase();
   const resolvedWordmarkName = (
@@ -524,7 +552,7 @@ export async function run(options: RunOptions): Promise<void> {
   ).toUpperCase();
 
   // Normalize the skill
-  let skill = await normalizeSkill(skillDir);
+  let skill = await normalizeSkill(resolvedSkillDir);
   if (hooks?.transform) {
     skill = await hooks.transform(skill);
   }

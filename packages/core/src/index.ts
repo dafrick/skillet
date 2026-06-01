@@ -6,6 +6,8 @@ export { detectDrift, isStale } from './drift.js';
 export { hashSkill } from './hash.js';
 export type { InstallOptions, InstallRecord } from './install.js';
 export { computeRenderHash, findExistingInstalls, LIB_VERSION, performInstall } from './install.js';
+export type { SkilletMarker } from './marker.js';
+export { discoverSkillTrees, readPackageName, readSkilletMarker } from './marker.js';
 export type { NormalizedSkill } from './normalize.js';
 export { normalizeSkill } from './normalize.js';
 export type { RunOptions } from './run.js';
