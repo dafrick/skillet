@@ -244,7 +244,7 @@
     <div class="sw"><div class="chip" style="background:var(--ember-500)"><span class="role">Primary</span></div><div class="meta"><div class="name">Ember</div><div class="use">Brand, wordmark, spinner, primary actions</div><div class="hex">#E8743B<span class="copy">copy</span></div></div></div>
     <div class="sw"><div class="chip" style="background:var(--ember-700)"><span class="role">Primary · deep</span></div><div class="meta"><div class="name">Ember Char</div><div class="use">Hover/pressed, borders, depth</div><div class="hex">#9C441C<span class="copy">copy</span></div></div></div>
     <div class="sw"><div class="chip" style="background:var(--iris-600)"><span class="role">Secondary</span></div><div class="meta"><div class="name">Iris</div><div class="use">Prompt prefix, focus, interactive state, selected chips</div><div class="hex">#7C3AED<span class="copy">copy</span></div></div></div>
-    <div class="sw"><div class="chip" style="background:var(--iris-400)"><span class="role">Interactive</span></div><div class="meta"><div class="name">Iris Bright</div><div class="use">Cursor ›, highlighted choice, confirmed selections, keyboard hints</div><div class="hex">#A78BFA<span class="copy">copy</span></div></div></div>
+    <div class="sw"><div class="chip" style="background:var(--iris-400)"><span class="role">Interactive</span></div><div class="meta"><div class="name">Iris Bright</div><div class="use">Cursor ›, highlighted choice, confirmed selections, keyboard hints, attribution line ("Packaged with Skillet…")</div><div class="hex">#A78BFA<span class="copy">copy</span></div></div></div>
     <div class="sw"><div class="chip" style="background:var(--green-500)"><span class="role">Success</span></div><div class="meta"><div class="name">Basil</div><div class="use">✔ completed, pristine, passing, healthy</div><div class="hex">#2FB67C<span class="copy">copy</span></div></div></div>
     <div class="sw"><div class="chip" style="background:var(--red-500)"><span class="role">Error</span></div><div class="meta"><div class="name">Chili</div><div class="use">✘ failures, destructive, drift alerts</div><div class="hex">#E5484D<span class="copy">copy</span></div></div></div>
   </div>
@@ -291,7 +291,8 @@
   <div class="section-label">CLI output patterns</div>
 
   <!-- 1. Full header — install / update, interactive TTY -->
-  <div class="flow-label"><b>Full header</b> · install &amp; update · interactive TTY</div>
+  <!-- Wordmark: dynamic figlet in ANSI Shadow style (<SKILL-NAME>), followed by attribution line -->
+  <div class="flow-label"><b>Full header</b> · install &amp; update · interactive TTY · dynamic figlet wordmark (ANSI Shadow)</div>
   <div class="term pattern">
     <div class="term-bar">
       <i class="t1"></i><i class="t2"></i><i class="t3"></i>
@@ -358,6 +359,26 @@
 <span class="se">one verb picked at random per invocation within each command's pool</span></div>
   </div>
 
+  <!-- 4b. Standard verb table — fallback / predictable copy -->
+  <div class="flow-label" style="margin-top:32px"><b>Standard verbs</b> · predictable fallback copy (non-cooking mode)</div>
+  <div class="term pattern">
+    <div class="term-bar">
+      <i class="t1"></i><i class="t2"></i><i class="t3"></i>
+      <span class="title">standard verb reference · deterministic, no randomness</span>
+    </div>
+    <div class="term-body" style="font-size:12px;line-height:2">
+<span class="dim">command    active (spinner)                        done</span>
+<span class="dim">───────────────────────────────────────────────────────────────</span>
+<span class="ir">install  </span>  <span class="pr">⠙</span> Installing into <span class="ir">&lt;target&gt;</span>…           <span class="ok">✔ Installed</span>
+<span class="ir">update   </span>  <span class="pr">⠙</span> Updating <span class="ir">&lt;target&gt;</span>…                  <span class="ok">✔ Updated</span>
+<span class="ir">uninstall</span>  <span class="pr">⠙</span> Removing <span class="ir">&lt;target&gt;</span>…                  <span class="ok">✔ Removed</span>
+<span class="ir">detect   </span>  <span class="pr">⠙</span> Detecting targets…                  <span class="ok">✔ Found N target(s)</span>
+<span class="dim">───────────────────────────────────────────────────────────────</span>
+<span class="se">CI / non-TTY: active form lowercased, prefixed with </span><span class="dim">[pkg.name]</span>
+<span class="dim">  e.g.  [my-skill] installing into claude (user)…</span>
+<span class="dim">        [my-skill] ✔ installed — ~/.claude/skills/my-skill/</span></div>
+  </div>
+
   <!-- 5. Rotating taglines reference -->
   <div class="flow-label" style="margin-top:32px"><b>Rotating taglines</b> · sample pool</div>
   <div class="term pattern">
@@ -388,7 +409,7 @@
 <span class="dim">  "First rule: mise en place."</span></div>
   </div>
 
-  <footer>Tap a swatch to copy · built for <b>Skillet</b> 🍳</footer>
+  <footer>Tap a swatch to copy · <a href="https://github.com/dafrick/skillet" style="color:var(--iris-400);text-decoration:none">Packaged with Skillet v0.1.1 · package your own for any agent in one step ↗</a></footer>
 </div>
 
 <div id="toast">copied</div>
@@ -564,9 +585,9 @@
       const wm = buildSmallWM();
       container.appendChild(wm);
 
-      const tag = document.createElement('div');
-      tag.innerHTML = `  ${c('dim', randomTagline())}`;
-      container.appendChild(tag);
+      const attr = document.createElement('div');
+      attr.innerHTML = `  ${c('ir', 'Packaged with Skillet v0.1.1')}  ${c('dim','·')}  ${c('dim','package your own for any agent in one step ↗')}`;
+      container.appendChild(attr);
 
       const gap = document.createElement('div'); gap.textContent = ' ';
       container.appendChild(gap);
@@ -663,15 +684,14 @@
   /* ── 2. Light header terminal (list) ── */
   (function(){
     const container = document.getElementById('termLight');
-    const tagline = randomTagline();
 
     const wm = document.createElement('div');
     wm.innerHTML =
-      '<span style="color:var(--ember-500);font-weight:700;letter-spacing:.1em">SKILLET</span>' +
-      ' ' + c('dim','v0.1.0') + '  ' + c('dim','·') + ' ' +
-      c('se','Install agent skills across your AI tools') +
+      '<span style="color:var(--ember-500);font-weight:700;letter-spacing:.1em">my-skill</span>' +
+      ' ' + c('dim','v1.0.0') + '  ' + c('dim','·') + ' ' +
+      c('se','&lt;pkg.description&gt;') +
       '\n' +
-      `  ${c('dim', tagline)}\n\n`;
+      `  ${c('ir', 'Packaged with Skillet v0.1.1')}  ${c('dim','·')}  ${c('dim','package your own for any agent in one step ↗')}\n\n`;
     container.appendChild(wm);
 
     const rows = [
