@@ -21,19 +21,20 @@ function renderAttributionLine(coreVersion: string): string {
   return `  ${primary} ${secondary}`;
 }
 
-// Full header: wordmark + attribution — for install/update
+// Full header: wordmark + description + attribution — for install/update
 export function renderFullHeader(opts: HeaderOpts): string {
   if (!process.stdout.isTTY || process.env.CI) return '';
   const wordmark = generateWordmark(opts.resolvedWordmarkName);
+  const description = dim(opts.pkg.description ?? '');
   const attribution = renderAttributionLine(opts.coreVersion);
-  return `\n${wordmark}\n${attribution}\n\n`;
+  return `\n${wordmark}\n${description}\n${attribution}\n\n`;
 }
 
-// Light header: DISPLAY-NAME vX.Y.Z + attribution + description — for list/uninstall
+// Light header: DISPLAY-NAME + description + attribution — for list/uninstall
 export function renderLightHeader(opts: HeaderOpts): string {
   if (!process.stdout.isTTY || process.env.CI) return '';
-  const title = ember500.bold(`${opts.resolvedDisplayName} v${opts.pkg.version}`);
-  const attribution = renderAttributionLine(opts.coreVersion);
+  const title = ember500.bold(`${opts.resolvedDisplayName}`);
   const description = dim(opts.pkg.description ?? '');
-  return `${title}\n${attribution}\n  ${description}\n`;
+  const attribution = renderAttributionLine(opts.coreVersion);
+  return `${title} - ${description}\n${attribution}\n\n`;
 }
