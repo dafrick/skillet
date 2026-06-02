@@ -4,13 +4,20 @@ build:
 	pnpm build
 
 clean:
-	rm -rf packages/core/dist packages/core/coverage
+	rm -rf dist coverage
+
+# Usage: make run install
+#        make run ARGS=--help   (-- flags must use ARGS= since make intercepts them)
+ifeq (run,$(firstword $(MAKECMDGOALS)))
+  _RUN_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  $(eval $(_RUN_ARGS):;@:)
+endif
 
 run: build
-	node packages/core/bin/cli.js --help
+	pnpm exec hello-skill $(_RUN_ARGS) $(ARGS)
 
 watch:
-	pnpm --filter @skillet-cli/core exec tsc --watch
+	pnpm exec tsc --watch --preserveWatchOutput
 
 test:
 	pnpm test
