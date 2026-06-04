@@ -131,8 +131,8 @@ async function runInstall(
     requestorRoot?: string;
   },
   verbMode: 'fun' | 'standard',
-  resolvedDisplayName: string,
-  resolvedWordmarkName: string,
+  _resolvedDisplayName: string,
+  _resolvedWordmarkName: string,
 ): Promise<void> {
   const isTTY = process.stdout.isTTY ?? false;
 
@@ -232,8 +232,8 @@ async function runUpdate(
   pkg: { name: string; version: string },
   opts: { force?: boolean; addNew?: boolean },
   verbMode: 'fun' | 'standard',
-  resolvedDisplayName: string,
-  resolvedWordmarkName: string,
+  _resolvedDisplayName: string,
+  _resolvedWordmarkName: string,
 ): Promise<void> {
   const isTTY = process.stdout.isTTY ?? false;
 
@@ -337,8 +337,8 @@ async function runUninstall(
   requestorRoot: string,
   opts: { yes?: boolean; force?: boolean },
   verbMode: 'fun' | 'standard',
-  resolvedDisplayName: string,
-  resolvedWordmarkName: string,
+  _resolvedDisplayName: string,
+  _resolvedWordmarkName: string,
 ): Promise<void> {
   const isTTY = process.stdout.isTTY ?? false;
 
@@ -439,9 +439,19 @@ function registerInstallCommand(
     .option('--yes', 'skip interactive prompts')
     .option('--force', 'overwrite drifted installs')
     .action(async (opts: { target: string[]; scope?: string; yes?: boolean; force?: boolean }) => {
-      process.stdout.write(renderFullHeader({ resolvedWordmarkName, resolvedDisplayName, pkg, coreVersion }));
+      process.stdout.write(
+        renderFullHeader({ resolvedWordmarkName, resolvedDisplayName, pkg, coreVersion }),
+      );
       for (const skill of skills) {
-        await runInstall(skill, pkg, hooks, { ...opts, requestorRoot }, verbMode, resolvedDisplayName, resolvedWordmarkName);
+        await runInstall(
+          skill,
+          pkg,
+          hooks,
+          { ...opts, requestorRoot },
+          verbMode,
+          resolvedDisplayName,
+          resolvedWordmarkName,
+        );
       }
     });
 }
@@ -460,7 +470,9 @@ function registerUpdateCommand(
     .option('--force', 'overwrite without prompting on local modifications')
     .option('--add-new', 'also offer newly available targets')
     .action(async (opts: { force?: boolean; addNew?: boolean }) => {
-      process.stdout.write(renderFullHeader({ resolvedWordmarkName, resolvedDisplayName, pkg, coreVersion }));
+      process.stdout.write(
+        renderFullHeader({ resolvedWordmarkName, resolvedDisplayName, pkg, coreVersion }),
+      );
       for (const skill of skills) {
         await runUpdate(skill, pkg, opts, verbMode, resolvedDisplayName, resolvedWordmarkName);
       }
@@ -482,9 +494,19 @@ function registerUninstallCommand(
     .option('--yes', 'skip interactive prompts')
     .option('--force', 'delete modified skills without prompting')
     .action(async (opts: { yes?: boolean; force?: boolean }) => {
-      process.stdout.write(renderLightHeader({ resolvedWordmarkName, resolvedDisplayName, pkg, coreVersion }));
+      process.stdout.write(
+        renderLightHeader({ resolvedWordmarkName, resolvedDisplayName, pkg, coreVersion }),
+      );
       for (const skill of skills) {
-        await runUninstall(skill, pkg, requestorRoot, opts, verbMode, resolvedDisplayName, resolvedWordmarkName);
+        await runUninstall(
+          skill,
+          pkg,
+          requestorRoot,
+          opts,
+          verbMode,
+          resolvedDisplayName,
+          resolvedWordmarkName,
+        );
       }
     });
 }
@@ -500,7 +522,9 @@ function registerListCommand(
     .command('list')
     .description('List all installed skill targets')
     .action(async () => {
-      process.stdout.write(renderLightHeader({ resolvedWordmarkName, resolvedDisplayName, pkg, coreVersion }));
+      process.stdout.write(
+        renderLightHeader({ resolvedWordmarkName, resolvedDisplayName, pkg, coreVersion }),
+      );
       for (const skill of skills) {
         await runList(skill, pkg);
       }

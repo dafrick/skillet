@@ -375,9 +375,9 @@ describe('gcUninstall', () => {
     // Manifest should be completely untouched — compare parsed fields (not byte-level string)
     const raw = await fs.readFile(path.join(skillDir, '.skill-manifest.json'), 'utf8');
     const parsed = JSON.parse(raw) as Record<string, unknown>;
-    expect(parsed['name']).toEqual(legacyRaw.name);
-    expect(parsed['source']).toEqual(legacyRaw.source);
-    expect(parsed['contentHash']).toEqual(legacyRaw.contentHash);
+    expect(parsed.name).toEqual(legacyRaw.name);
+    expect(parsed.source).toEqual(legacyRaw.source);
+    expect(parsed.contentHash).toEqual(legacyRaw.contentHash);
     expect(Object.hasOwn(parsed, 'requestedBy')).toBe(false);
   });
 
