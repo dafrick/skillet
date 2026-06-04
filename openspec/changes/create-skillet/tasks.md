@@ -146,10 +146,54 @@
 
 ## 9. Build tooling and CI
 
-- [ ] 9.1 Add Makefile targets for `packages/create`: `build` (tsup), `typecheck` (tsc --noEmit), `test`, `publish` — mirroring existing `packages/core` targets
-- [ ] 9.2 Add Makefile targets for `packages/ui`: `build` (tsc), `typecheck`, `test`
-- [ ] 9.3 Update root `Makefile` or CI matrix to build `packages/ui` before `packages/core` and `packages/create`
-- [ ] 9.4 Run full workspace test suite (`pnpm -r test`) and confirm all packages pass
+- [ ] 9.1 Add `scripts` to `packages/create/package.json` (`build: tsup`, `typecheck: tsc --noEmit`, `test: vitest run`, `test:unit`, `test:integration`, `test:e2e`, `prepublishOnly: pnpm build && pnpm test`) and `packages/ui/package.json` (`build: tsc`, `typecheck: tsc --noEmit`, `test: vitest run`) — mirroring the shape of `packages/core/package.json` scripts. Update root `package.json` scripts to include all three packages in the right build order:
+  - `build`: `pnpm --filter @skillet-cli/ui build && pnpm --filter @skillet-cli/core build && pnpm --filter create-skillet build`
+  - `typecheck`: `pnpm -r typecheck`
+  - `test:unit`: `pnpm -r test:unit`
+  - `test:integration`: `pnpm --filter @skillet-cli/core test:integration && pnpm --filter create-skillet test:integration`
+  - `test:e2e`: `pnpm --filter @skillet-cli/core test:e2e && pnpm --filter create-skillet test:e2e`
+
+- [ ] 9.2 Update `.github/workflows/ci.yml` with per-package path-filtered jobs. Add a `changes` job using `dorny/paths-filter@v3` at the top that outputs which packages were affected:
+  ```yaml
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      ui: ${{ steps.filter.outputs.ui }}
+      core: ${{ steps.filter.outputs.core }}
+      create: ${{ steps.filter.outputs.create }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            ui:
+              - 'packages/ui/**'
+            core:
+              - 'packages/core/**'
+              - 'packages/ui/**'
+            create:
+              - 'packages/create/**'
+              - 'packages/ui/**'
+  ```
+  Gate each existing test job (`unit`, `integration`, `e2e`) with `needs: [changes]` and a conditional — e.g., `if: needs.changes.outputs.core == 'true' || needs.changes.outputs.create == 'true'`. Add a build step (`pnpm --filter @skillet-cli/ui build`) before running tests in the `core` and `create` jobs, since both packages require the compiled `packages/ui` dist. The `quality` job (lint/typecheck) runs unconditionally on every push.
+
+- [ ] 9.3 Add tagging convention to `design.md` under a new `### Decision: Package-prefixed release tags` section:
+  - `core-v<semver>` tags release `@skillet-cli/core` (e.g. `core-v1.2.3`)
+  - `create-v<semver>` tags release `create-skillet` (e.g. `create-v0.1.0`)
+  - `packages/ui` is private and never tagged or published independently
+
+- [ ] 9.4 Split `.github/workflows/release.yml` into two workflows:
+  - `release-core.yml` — mirrors existing `release.yml` but: triggers on `workflow_run: [CI]` where `head_branch` starts with `core-v`; validates `^core-v[0-9]+\.[0-9]+\.[0-9]+$`; runs `pnpm --filter @skillet-cli/ui build` before `pnpm -F @skillet-cli/core publish`
+  - `release-create.yml` — same pattern: `head_branch` starts with `create-v`; validates `^create-v[0-9]+\.[0-9]+\.[0-9]+$`; runs `pnpm --filter @skillet-cli/ui build` then `pnpm -F create-skillet publish --access public --no-git-checks`
+  - Delete the original `release.yml`
+
+- [ ] 9.5 Run full workspace build and test suite to confirm all packages pass before marking this section complete:
+  ```
+  pnpm --filter @skillet-cli/ui build && pnpm --filter @skillet-cli/ui test
+  pnpm --filter @skillet-cli/core build && pnpm --filter @skillet-cli/core test
+  pnpm --filter create-skillet build && pnpm --filter create-skillet test
+  ```
 
 ## 10. Verify
 
