@@ -21,8 +21,8 @@
 
 - [ ] 4.1 Create `test-manual/templates/ISSUE.md.template` with fields: title, description (what happened), reproduction steps, how encountered, why it is bad (user impact), severity (critical/high/medium/low), workaround
 - [ ] 4.2a Create `test-manual/templates/TEST-RUN.md.template` skeleton: session metadata block (repo URL, tier, env, date, tester), seven-step protocol with checkboxes where Step 1 is "Identify the tier" with the five tier definitions table inline, soft-fail log section
-- [ ] 4.2b Complete `TEST-RUN.md.template`: issues list section (ISS-NNN links with one-line summaries), UX quality observations section, failure taxonomy key (✅ pass, 🟡 soft fail — docs gap, 🟠 soft fail — UX issue, 🔴 hard fail)
-- [ ] 4.3 Create `test-manual/templates/LOG.md.template`: header with repo/date/tester fields, brief instruction that entries are append-only (never edit prior entries), and a prompt showing the HH:MM entry format with an example ISS-NNN reference
+- [ ] 4.2b Complete `TEST-RUN.md.template`: **edge cases / unhappy paths** section (separate from happy-path steps) covering: no git remote configured, existing `package.json`, missing `SKILL.md`, large skill directory; issues list section (ISS-NNN links with one-line summaries); UX quality observations section; failure taxonomy key (✅ pass, 🟡 soft fail — docs gap, 🟠 soft fail — UX issue, 🔴 hard fail, 🔵 N/A)
+- [ ] 4.3 Create `test-manual/templates/LOG.md.template`: header with repo, tier, target environment, date, tester, and **Docker base image** fields; brief instruction that entries are append-only (never edit prior entries); a prompt showing the HH:MM entry format with an example ISS-NNN reference
 
 ## 5. TEST-MATRIX.md
 
@@ -35,7 +35,7 @@
 - [ ] 6.2 Add Prerequisites section (Docker, tmux; note: no Node required on host)
 - [ ] 6.3 Add "Running a test" section: `make test-start`, then `make test-teardown`; document that the run folder lives at `test-manual/tmp/YYYY-MM-DD-<repo-slug>/` and contains `LOG.md`, `TEST-RUN.md`, and `issues/`
 - [ ] 6.4 Add seven-step test protocol section with failure taxonomy; include a step for filling in the `env:` field before starting — note that environment choice is up to the tester, with a reminder to vary environments across runs for coverage
-- [ ] 6.5 Add Tmux Reference section for coding agents: private socket setup, `tmux send-keys` with `-l` flag for literal sends, `tmux capture-pane -p -J` for reading output, `wait-for-text.sh` usage, `@inquirer/prompts` key sequences (arrow keys, space, Enter, Ctrl+U, Ctrl+C), cleanup
+- [ ] 6.5 Add Tmux Reference section for coding agents: private socket setup, `tmux send-keys` with `-l` flag for literal sends, `tmux capture-pane -p -J -S -200` for reading output (document `-J` joins wrapped lines, `-S -200` reads 200 lines of scrollback), `wait-for-text.sh` usage, `@inquirer/prompts` key sequences (arrow keys, space, Enter, Ctrl+U, Ctrl+C), cleanup
 - [ ] 6.6 Add "Keeping the log" section: LOG.md is append-only (never rewrite), HH:MM timestamp format, reference ISS-NNN when filing an issue, distinction from TEST-RUN.md (log = narrative trace, test run = structured checklist)
 - [ ] 6.7 Add "Documenting issues" section: how to name files (ISS-NNN), where they live (`tmp/<run>/issues/`), how to reference from LOG.md
 
