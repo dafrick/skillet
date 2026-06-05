@@ -1,6 +1,6 @@
 ## 1. GitHub Repository Rename
 
-- [ ] 1.1 Rename GitHub repo from `dafrick/skillet` to `dafrick/skillet-cli` via GitHub Settings → General → Repository name
+- [x] 1.1 Rename GitHub repo from `dafrick/skillet` to `dafrick/skillet-cli` via GitHub Settings → General → Repository name
 
 ## 2. Source Code
 
