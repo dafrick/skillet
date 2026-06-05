@@ -22,8 +22,10 @@ describe('create-skillet binary smoke test', () => {
     const binPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../bin/cli.js');
     const stat = await fs.stat(binPath);
     expect(stat.isFile()).toBe(true);
-    // Verify execute permission
-    expect(stat.mode & 0o111).not.toBe(0);
+    // POSIX execute bits are not reported by fs.stat on Windows (NTFS has no such concept)
+    if (process.platform !== 'win32') {
+      expect(stat.mode & 0o111).not.toBe(0);
+    }
     const content = await fs.readFile(binPath, 'utf8');
     expect(content).toContain('#!/usr/bin/env node');
     expect(content).toContain('dist/run.js');

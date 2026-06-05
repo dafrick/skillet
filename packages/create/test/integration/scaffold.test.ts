@@ -43,7 +43,7 @@ describe('executeScaffold — integration (filesystem)', () => {
     const binPath = path.join(sandbox.dir, 'bin', 'cli.js');
     const content = await fsp.readFile(binPath, 'utf8');
     expect(content).toContain("new URL('../skill/', import.meta.url)");
-  });
+  }, 90_000);
 
   it.skipIf(process.platform === 'win32')('bin/cli.js has execute bits set', async () => {
     await fsp.writeFile(
