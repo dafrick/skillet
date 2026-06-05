@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { run } from '../dist/run.js';
+import { run } from '../dist/index.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
