@@ -524,7 +524,7 @@ When the light header is displayed (list and uninstall commands, TTY only), the 
 ### Requirement: Attribution line appears in all TTY headers
 Every header variant (full and light) SHALL include a single attribution line rendered immediately below the wordmark or name line, before any other content. The attribution line SHALL NOT appear in CI or non-TTY environments (consistent with header suppression rules).
 
-The attribution line format: `Packaged with Skillet v{core-version}` in Iris Bright bold, followed by `· package your own for any agent in one step ↗` in `chalk.dim`, where `↗` is an OSC 8 terminal hyperlink to the Skillet GitHub repository and `{core-version}` is `@skillet-cli/core`'s own package version.
+The attribution line format: `Packaged with Skillet v{core-version}` in Iris Bright bold, followed by `· package your own for any agent in one step ↗` in `chalk.dim`, where `↗` is an OSC 8 terminal hyperlink to `https://github.com/dafrick/skillet-cli` and `{core-version}` is `@skillet-cli/core`'s own package version.
 
 #### Scenario: Attribution line appears below full header wordmark
 - **WHEN** install runs in TTY and the full header is displayed
@@ -537,6 +537,10 @@ The attribution line format: `Packaged with Skillet v{core-version}` in Iris Bri
 #### Scenario: Attribution line is suppressed in CI/non-TTY
 - **WHEN** install runs in a non-TTY environment or CI is set
 - **THEN** no attribution line is emitted
+
+#### Scenario: Attribution hyperlink points to skillet-cli repo
+- **WHEN** a TTY header is rendered
+- **THEN** the OSC 8 hyperlink URL in the attribution line is `https://github.com/dafrick/skillet-cli`
 
 ---
 
