@@ -8,6 +8,10 @@ Before setting up the repo, install the following tools:
 - **pnpm 11+** — [pnpm.io/installation](https://pnpm.io/installation)
 - **lefthook** — [lefthook.dev](https://lefthook.dev) (git hooks manager)
 
+## Dev Container
+
+The recommended development environment is the included dev container — it comes with Node 24, pnpm, the GitHub CLI, and Claude Code pre-configured. See [`.devcontainer/README.md`](.devcontainer/README.md) for setup instructions.
+
 ## Setup
 
 After cloning the repository, run:
