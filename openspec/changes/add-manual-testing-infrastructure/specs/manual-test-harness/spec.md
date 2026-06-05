@@ -27,7 +27,13 @@ The project SHALL contain a `test-manual/` directory at the repository root with
 ---
 
 ### Requirement: README documents the full test protocol
-`test-manual/README.md` SHALL document: prerequisites (Docker, tmux), how to run `make test-start` and `make test-teardown`, the seven-step test protocol (identify tier → bootstrap Node → run create-skillet → verify output → install skill → verify skill placement → document issues), and a Tmux reference section for coding agents.
+`test-manual/README.md` SHALL document: prerequisites (Docker, tmux), how to run `make test-start` and `make test-teardown`, and the seven-step test protocol: identify tier → bootstrap Node → run create-skillet → verify output → install skill → verify skill placement → document issues.
+
+**Step 2 (bootstrap Node)** SHALL specify that the tester MUST follow only the npm README for `create-skillet`. If any step requires consulting the GitHub repository README, the tester SHALL note it in the soft-fail log as a 🟡 docs-gap soft fail. This constraint is not setup overhead — it IS the test.
+
+**Step 5 (install skill)** SHALL specify the local install mechanism: run `npm pack` in the skilletized directory to produce a tarball, then `npm install <tarball>` from a separate working directory. This tests the full install path without requiring a real npm publish.
+
+The README SHALL include a **"continue as long as possible" behavioral guideline**: when a step fails or behaves unexpectedly, the tester SHALL attempt to work around it, document the workaround in LOG.md, and continue the session rather than stopping. Issues are filed for later triage; the goal is to complete as much of the protocol as possible.
 
 #### Scenario: Agent can drive create-skillet wizard using only the README
 - **WHEN** a coding agent reads `test-manual/README.md`
@@ -37,14 +43,38 @@ The project SHALL contain a `test-manual/` directory at the repository root with
 - **WHEN** a tester consults the Tmux reference section
 - **THEN** it lists key sequences for: navigate list (arrow keys), select checkbox (space), confirm (Enter), accept default (Enter), clear field (Ctrl+U), cancel (Ctrl+C)
 
+#### Scenario: README specifies npm README-only constraint for bootstrap
+- **WHEN** a tester reads Step 2 of the test protocol
+- **THEN** it specifies that only the npm README may be followed, and that consulting the GitHub README constitutes a 🟡 docs-gap soft fail to record
+
+#### Scenario: README specifies npm pack as the local install mechanism
+- **WHEN** a tester reads Step 5 of the test protocol
+- **THEN** it specifies `npm pack` followed by `npm install <tarball>` as the skill installation method
+
+#### Scenario: README instructs tester to continue despite failures
+- **WHEN** a tester encounters a failure during a session
+- **THEN** the README instructs them to work around it, document it in LOG.md, and continue rather than stopping
+
 ---
 
-### Requirement: README documents the private socket convention
+### Requirement: README documents the private socket convention and operational tmux flags
 `test-manual/README.md` SHALL specify the tmux private socket path (`${TMPDIR:-/tmp}/claude-tmux-sockets/skillet.sock`) and require all agent tmux commands to use `-S "$SOCKET"` so agent sessions do not pollute the developer's personal tmux server.
+
+The Tmux reference section SHALL document two operationally critical flags:
+- **`send-keys -l`** (literal mode): prevents shell expansion of special characters in package names and paths; MUST be used when sending wizard input
+- **`capture-pane -p -J -S -200`**: the `-J` flag joins wrapped lines to prevent garbled output when parsing multi-line wizard prompts; `-S -200` reads up to 200 lines of scrollback history so prompt text is not lost
 
 #### Scenario: Agent uses private socket for all tmux commands
 - **WHEN** an agent follows the README Tmux reference
 - **THEN** every `tmux` command includes `-S "$SOCKET"` where `$SOCKET` points to the private socket path
+
+#### Scenario: README specifies -l flag for send-keys
+- **WHEN** an agent follows the README Tmux reference for sending wizard input
+- **THEN** the documented form uses `send-keys -l` to prevent shell expansion
+
+#### Scenario: README specifies -J and -S flags for capture-pane
+- **WHEN** an agent follows the README Tmux reference for reading wizard output
+- **THEN** the documented form uses `capture-pane -p -J -S -200`
 
 ---
 
@@ -70,23 +100,50 @@ The project SHALL contain a `test-manual/` directory at the repository root with
 
 ---
 
-### Requirement: Per-run template covers tier identification, happy path, edge cases, and UX quality
-`test-manual/templates/TEST-RUN.md.template` SHALL include sections for: session metadata (repo, tier, env, date, tester), step-by-step protocol with checkboxes, a soft-fail log (steps that required the GitHub README beyond the npm README), an issues list (linked to files in `issues/`), and a UX quality observations section.
+### Requirement: Failure taxonomy defines five result grades
+The harness SHALL use a five-grade failure taxonomy as the common language for recording outcomes across all test artifacts (TEST-RUN.md steps, TEST-MATRIX run log Outcome column, issue severity context):
+
+- ✅ **Pass** — Worked correctly with npm README alone; UX was clear and defaults were sensible
+- 🟡 **Soft fail — docs gap** — Worked but required consulting the GitHub repository README beyond the npm README at any point
+- 🟠 **Soft fail — UX issue** — Worked functionally but UX was confusing, defaults were wrong, preview was inaccurate, or post-install guidance was unclear
+- 🔴 **Hard fail** — Threw an error, produced wrong output, or could not be completed even with workarounds
+- 🔵 **N/A** — Test step not applicable to this tier or this repo's structure
+
+#### Scenario: Test step outcomes use taxonomy grades
+- **WHEN** a tester records the outcome of a protocol step in TEST-RUN.md
+- **THEN** they use one of the five taxonomy grades rather than free-form text
+
+#### Scenario: N/A grade is used for inapplicable steps
+- **WHEN** a test step does not apply to the current tier (e.g., multi-skill step for a T1 repo)
+- **THEN** the tester marks it 🔵 N/A with a brief note rather than leaving it blank
+
+---
+
+### Requirement: Per-run template covers happy path, edge cases, and UX quality
+`test-manual/templates/TEST-RUN.md.template` SHALL include sections for: session metadata (repo URL, tier, env, date, tester), a **happy-path protocol** section with numbered checkboxes following the seven-step protocol, an **edge cases / unhappy paths** section with numbered checkboxes covering scenarios such as: no git remote configured, existing `package.json` in the repo, missing `SKILL.md`, large skill directory with many files, a **soft-fail log** (steps that required the GitHub README beyond the npm README), an **issues list** (ISS-NNN identifiers linked to files in `issues/`), and a **UX quality observations** section.
 
 #### Scenario: First step of template is tier identification
 - **WHEN** a tester opens the TEST-RUN template
 - **THEN** the first substantive step is "Identify the tier" with guidance on the five tier definitions
 
+#### Scenario: Template has distinct happy-path and edge-case sections
+- **WHEN** a tester fills in the template
+- **THEN** happy-path steps and edge-case steps appear in separate numbered sections, not intermixed
+
 ---
 
 ### Requirement: Session LOG.md captures a running narrative of test activity
-Each test run SHALL produce a `tmp/<run>/LOG.md` file that accumulates timestamped free-form entries as the session progresses. `test-manual/templates/LOG.md.template` SHALL provide the starting structure. The LOG.md is the primary artifact for reconstructing how an issue was encountered — it documents what the tester was doing, in what order, and what workarounds were tried. It is distinct from `TEST-RUN.md`: the test run template records pass/fail status against structured steps; the log captures the unstructured narrative of how the tester arrived at each state.
+Each test run SHALL produce a `tmp/<run>/LOG.md` file that accumulates timestamped free-form entries as the session progresses. `test-manual/templates/LOG.md.template` SHALL provide the starting structure with a header containing: repo URL, tier, target environment, date, tester, and Docker base image. The LOG.md is the primary artifact for reconstructing how an issue was encountered — it documents what the tester was doing, in what order, and what workarounds were tried. It is distinct from `TEST-RUN.md`: the test run template records pass/fail status against structured steps; the log captures the unstructured narrative of how the tester arrived at each state.
 
 The file SHALL be strictly append-only: entries are never edited or deleted once written. Each entry SHALL be prefixed with the current time (HH:MM format). When an issue file is created, the log entry that prompted it SHALL reference the issue identifier (e.g., `→ ISS-001`).
 
 #### Scenario: LOG.md entries are timestamped and append-only
 - **WHEN** a tester records an observation during a session
 - **THEN** a new HH:MM-prefixed entry is added at the bottom of LOG.md without modifying any prior entry
+
+#### Scenario: LOG.md header includes Docker base image
+- **WHEN** a tester opens a new LOG.md from the template
+- **THEN** the header contains a Docker base image field alongside repo, tier, env, date, and tester
 
 #### Scenario: LOG.md references issue files as they are created
 - **WHEN** a tester creates an issue file during a session
@@ -98,12 +155,16 @@ The file SHALL be strictly append-only: entries are never edited or deleted once
 
 ---
 
-### Requirement: ISSUE.md template captures structured issue detail
-`test-manual/templates/ISSUE.md.template` SHALL include fields for: issue title, description (what happened), reproduction steps, how encountered, why it is bad (user impact), severity (critical/high/medium/low), and workaround (if any).
+### Requirement: ISSUE.md template captures structured issue detail with sequential identifiers
+Issue files SHALL be named `ISS-001.md`, `ISS-002.md`, etc. — sequentially numbered within a run, zero-padded to three digits — and placed in `tmp/<run>/issues/`. `test-manual/templates/ISSUE.md.template` SHALL include fields for: issue title, description (what happened), reproduction steps, how encountered, why it is bad (user impact), severity (critical/high/medium/low), and workaround (if any).
 
 #### Scenario: Filled issue file is self-contained
 - **WHEN** a developer reads a completed issue file from `tmp/<run>/issues/`
 - **THEN** they can understand the issue, reproduce it, and assess its severity without referring to the session log
+
+#### Scenario: Issue files follow sequential naming
+- **WHEN** a tester creates issue files during a session
+- **THEN** they are named ISS-001.md, ISS-002.md, etc. in the order they were encountered
 
 ---
 
