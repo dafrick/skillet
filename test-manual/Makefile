@@ -9,6 +9,8 @@ test-start:
 	mkdir -p $(dir $(SOCKET))
 	-docker rm -f $(CONTAINER)
 	docker run -d --name $(CONTAINER) $(IMAGE) sleep infinity
+	@echo "Installing Node..."
+	@docker exec $(CONTAINER) bash -c "apt-get update -qq && apt-get install -y -qq curl > /dev/null 2>&1 && curl -fsSL https://deb.nodesource.com/setup_24.x | bash - > /dev/null 2>&1 && apt-get install -y nodejs > /dev/null 2>&1"
 	-tmux -S "$(SOCKET)" kill-session -t $(SESSION)
 	tmux -S "$(SOCKET)" new-session -d -s $(SESSION)
 	tmux -S "$(SOCKET)" send-keys -t $(SESSION) "docker exec -it $(CONTAINER) bash" Enter
@@ -35,6 +37,7 @@ endif
 	cp templates/TASK.md.template $$RUN/TASK.md && \
 	cp templates/TEST-RUN.md.template $$RUN/TEST-RUN.md && \
 	cp templates/LOG.md.template $$RUN/LOG.md && \
+	cp AGENT-SUPPLEMENT.md $$RUN/AGENT-SUPPLEMENT.md && \
 	echo "" && \
 	echo "Run folder created: $$RUN" && \
 	echo "Next: fill in $$RUN/TASK.md with the repo URL and target environment."
