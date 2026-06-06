@@ -4,7 +4,7 @@
 repo:
 tier:
 env:
-version:
+create-skillet-version:
 date:
 tester:
 ```
@@ -30,9 +30,9 @@ tester:
 
 ## Happy-Path Protocol
 
-- [ ] **Step 1 — Identify the tier**
+- [ ] **Step 1 — Confirm tier**
 
-  Classify the repo using the tier reference in `README.md` before starting any other steps.
+  Confirm the tier you identified during pre-session setup. Update if your assessment changes after inspecting the repo or the output of `create-skillet`.
 
   Tier: ___
   Notes:
@@ -42,6 +42,8 @@ tester:
   Grade whether the test user was able to set up their environment using only the npm README for `create-skillet`.
 
   npm README: https://www.npmjs.com/package/create-skillet
+
+  > **Guide note:** The test user does not know the name of the tool — discovering `create-skillet` is part of what Step 2 measures. If they found the npm page via direct search, that is a clean pass. If they arrived via the GitHub repo and used GitHub documentation to complete bootstrap, apply the soft-fail classification only for information they obtained exclusively from GitHub.
 
   Note any point where the test user consulted the GitHub README or required outside information to proceed.
 
@@ -63,11 +65,13 @@ tester:
 
   Grade the install step. Note whether the test user found the install path from the available documentation alone.
 
+  Available documentation for this step includes the npm README at https://www.npmjs.com/package/@skillet-cli/core
+
   Notes:
 
 - [ ] **Step 6 — Verify skill placement**
 
-  Confirm skill files landed in the expected location for the target environment.
+  Confirm skill files landed in the correct relative path **inside the container**. This step verifies structural correctness — that the packaging and install mechanics worked — not that the skill is active in a real agent environment.
 
   | Environment | Expected skill install path |
   |---|---|
@@ -81,6 +85,7 @@ tester:
 ---
 
 ## Soft-Fail Log
+<!-- Summarize steps that didn't pass cleanly. Per-step Outcome fields above hold the full notes; this table is a quick-scan overview. -->
 
 | Step | Symbol | Notes |
 |------|--------|-------|
