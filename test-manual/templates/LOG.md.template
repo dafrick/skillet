@@ -17,9 +17,7 @@ docker-image:
 
 ---
 
-<!-- Append entries below.
-
-Format examples:
+<!-- Format examples:
 
 14:32 Ran `npx create-skillet`. Wizard launched. Selected all defaults.
 14:35 Output directory present. Inspected contents — structure looked reasonable.
@@ -29,3 +27,5 @@ Format examples:
 14:50 Could not determine where skills should land from the available docs. Stuck on Task 2.
 
 -->
+
+<!-- Append entries below. -->
