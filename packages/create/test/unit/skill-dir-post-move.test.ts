@@ -32,6 +32,7 @@ vi.mock('node:fs/promises', async (importOriginal) => {
     mkdir: vi.fn(),
     rename: vi.fn(),
     writeFile: vi.fn(),
+    chmod: vi.fn(),
   };
 });
 
@@ -48,6 +49,7 @@ const mockFspReaddir = vi.mocked(fsp.readdir);
 const mockFspMkdir = vi.mocked(fsp.mkdir);
 const mockFspRename = vi.mocked(fsp.rename);
 const mockFspWriteFile = vi.mocked(fsp.writeFile);
+const mockFspChmod = vi.mocked(fsp.chmod);
 
 function makeDetected(overrides: Partial<DetectionResult> = {}): DetectionResult {
   return {
@@ -100,6 +102,7 @@ describe('setupSkillDir — post-move bin/cli.js update', () => {
     mockFspMkdir.mockResolvedValue(undefined);
     mockFspRename.mockResolvedValue(undefined);
     mockFspWriteFile.mockResolvedValue(undefined);
+    mockFspChmod.mockResolvedValue(undefined);
   });
 
   it('rewrites bin/cli.js to reference skill/ after files are moved', async () => {
@@ -120,6 +123,22 @@ describe('setupSkillDir — post-move bin/cli.js update', () => {
     // Content must reference skill/ URL
     const content = writeCall?.[1] as string;
     expect(content).toContain("new URL('../skill/', import.meta.url)");
+  });
+
+  it('sets execute permission (chmod 755) on the rewritten bin/cli.js', async () => {
+    mockSkillDirAbsent();
+    mockReaddir(['SKILL.md', 'README.md']);
+    mockCheckbox.mockResolvedValue(['SKILL.md']);
+    mockConfirm.mockResolvedValue(true);
+
+    await setupSkillDir(makeDetected());
+
+    // chmod must have been called on bin/cli.js with 0o755
+    const chmodCall = mockFspChmod.mock.calls.find(
+      (c) => typeof c[0] === 'string' && (c[0] as string).endsWith('bin/cli.js'),
+    );
+    expect(chmodCall).toBeDefined();
+    expect(chmodCall?.[1]).toBe(0o755);
   });
 
   it('runs npm pkg set skillet.skillDir=./skill/ after files are moved', async () => {
@@ -146,6 +165,7 @@ describe('setupSkillDir — no update when no files selected', () => {
     mockFspMkdir.mockResolvedValue(undefined);
     mockFspRename.mockResolvedValue(undefined);
     mockFspWriteFile.mockResolvedValue(undefined);
+    mockFspChmod.mockResolvedValue(undefined);
   });
 
   it('does NOT rewrite bin/cli.js when user selects no files', async () => {
@@ -186,6 +206,7 @@ describe('setupSkillDir — no update when user declines the move', () => {
     mockFspMkdir.mockResolvedValue(undefined);
     mockFspRename.mockResolvedValue(undefined);
     mockFspWriteFile.mockResolvedValue(undefined);
+    mockFspChmod.mockResolvedValue(undefined);
   });
 
   it('does NOT rewrite bin/cli.js when user declines at the confirmation', async () => {
