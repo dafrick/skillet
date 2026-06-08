@@ -151,5 +151,6 @@ export async function setupSkillDir(detected: DetectionResult): Promise<void> {
   // Step 7: update bin/cli.js and package.json to reflect new skill location
   const binPath = path.join(cwd, 'bin', 'cli.js');
   await fsp.writeFile(binPath, buildBinCliJs('skill/'), 'utf8');
+  await fsp.chmod(binPath, 0o755);
   runSync('npm', ['pkg', 'set', 'skillet.skillDir=./skill/'], 'npm pkg set skillet.skillDir');
 }
