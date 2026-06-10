@@ -8,7 +8,8 @@
       "!**/coverage",
       "!pnpm-lock.yaml",
       "!docs",
-      "!.claude/worktrees"
+      "!.claude/worktrees",
+      "!.claude/skills"
     ]
   },
   "formatter": {
