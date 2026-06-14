@@ -68,7 +68,11 @@ program
     process.stdout.write(
       `  repositoryUrl:${config.repositoryUrl ? ` ${config.repositoryUrl}` : ' (none)'}\n`,
     );
-    process.stdout.write(`  skillDir:     ${config.skillDir}\n`);
+    if (config.isMultiSkill) {
+      process.stdout.write(`  skillsParent:  ${config.skillsParentDirs.join(', ')}\n`);
+    } else {
+      process.stdout.write(`  skillDir:     ${config.skillDir}\n`);
+    }
     process.stdout.write('\nCommands to run:\n');
     if (!detected.hasPackageJson) {
       process.stdout.write('  npm init -y\n');
@@ -91,8 +95,10 @@ program
     // Step 6: Execute scaffold
     await executeScaffold(config);
 
-    // Step 7: Skill directory setup
-    await setupSkillDir(detected);
+    // Step 7: Skill directory setup (skip for multi-skill packages)
+    if (!config.isMultiSkill) {
+      await setupSkillDir(detected);
+    }
 
     // Step 8: Completion block
     const elapsed = ((Date.now() - start) / 1000).toFixed(1);
